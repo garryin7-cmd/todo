@@ -229,11 +229,11 @@ function compareHtml() {
       </div>`;
 }
 
-// 시간대 상태 아이콘 (✅ 복용 / ⏭ 안 먹음 / ⏳ 기록 없음)
+// 시간대 상태 아이콘 (✅ 복용 / ❌ 안 먹음 / ⏳ 기록 없음)
 function slotIcon(s) {
   const record = findRecord(s);
   if (!record) return '⏳';
-  return record.status === 'taken' ? '✅' : '⏭';
+  return record.status === 'taken' ? '✅' : '❌';
 }
 
 // 선택한 시간대 창 내용
@@ -248,7 +248,7 @@ function slotPanelHtml(s, isCurrent, previous) {
     return `<div class="slot-panel ok"><span>✅ ${timeText(record.time)} 복용${note}</span>${undo}</div>`;
   }
   if (record && record.status === 'skipped') {
-    return `<div class="slot-panel skip"><span>⏭ 안 먹음으로 기록</span>${undo}</div>`;
+    return `<div class="slot-panel skip"><span>❌ 안 먹음으로 기록</span>${undo}</div>`;
   }
 
   // 지금 시간대인데 앞 시간대도 기록이 없으면, 앞 시간대부터 정리하도록 안내
@@ -330,7 +330,7 @@ function historyHtml() {
 function markHtml(s, current) {
   const record = findRecord(s);
   if (record && record.status === 'taken') return `<span class="mark ok" title="${timeText(record.time)}">✅<small>${timeText(record.time)}</small></span>`;
-  if (record && record.status === 'skipped') return '<span class="mark skip">⏭</span>';
+  if (record && record.status === 'skipped') return '<span class="mark skip">❌</span>';
   const isFuture = s.date === current.date && s.slot === 'evening' && current.slot === 'morning';
   if (isFuture) return '';
   if (slotKey(s) === slotKey(current)) return '<span class="mark wait">⏳</span>';

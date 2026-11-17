@@ -234,13 +234,23 @@ body.is-dragging-page .drag-handle { cursor: grabbing; }
 
 /* 수정, 삭제 버튼 */
 .btn-icon {
+  /* 36x36 정사각형 누르는 영역 + 18px 아이콘 (휴대폰 손가락 기준) */
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   border: none;
   background: none;
   color: var(--text-sub);
-  padding: 4px 6px;
-  border-radius: 6px;
+  font-size: 18px;
+  line-height: 1;
+  border-radius: 8px;
 }
 .btn-icon:hover { background: var(--bg); color: var(--text); }
+.btn-edit, .btn-icon[data-action="edit"] { font-size: 22px; } /* ✎ 글자 모양이 작게 그려져서 ✕와 크기를 맞춤 */
 .btn-delete:hover { color: #e03131; }
 
 /* 완료된 항목 */
@@ -446,6 +456,7 @@ body.is-dragging-page .drag-handle { cursor: grabbing; }
 .med-info span { color: var(--text-sub); font-size: 13px; }
 .med-info .stock.low { color: #e03131; font-weight: 600; }
 .med-actions { display: flex; align-items: center; gap: 2px; }
+.med-actions .btn-small { height: 36px; padding: 0 12px; } /* 재고 추가 버튼 높이를 아이콘과 맞춤 */
 .restock-form { flex-basis: 100%; display: flex; gap: 6px; }
 .restock-form input { flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid var(--primary); border-radius: 6px; font: inherit; }
 
@@ -609,7 +620,6 @@ body.is-dragging-page .drag-handle { cursor: grabbing; }
 
   /* 할 일 항목: 버튼을 손가락으로 누르기 쉽게 */
   .todo-item { gap: 8px; padding: 10px; }
-  .btn-icon { padding: 8px; }
   .drag-handle { padding: 8px 4px; font-size: 20px; } /* 손가락으로 잡기 쉽게 */
 
   /* 수정 모드: 입력창 한 줄, 카테고리·저장·취소는 그 아래 */
