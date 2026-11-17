@@ -862,6 +862,13 @@ const savedTab = localStorage.getItem(TAB_KEY);
 showTab(['todo', 'meds', 'health'].includes(savedTab) ? savedTab : 'todo');
 checkDeadlineAlert();
 
+// 날짜·시각 칸: 작은 아이콘이 아니라 칸 아무 곳이나 눌러도 선택 창이 열리게
+document.addEventListener('click', (event) => {
+  const input = event.target.closest('input[type="date"], input[type="time"], input[type="datetime-local"]');
+  if (!input || typeof input.showPicker !== 'function') return;
+  try { input.showPicker(); } catch (error) { /* 이미 열려 있거나 지원 안 함 → 기본 동작 */ }
+});
+
 // PWA: 서비스 워커 등록 (오프라인 실행 + 앱 설치 가능하게)
 // 내 컴퓨터에서 index.html을 더블클릭해 열 때(file://)는 지원 안 되므로 건너뜀
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {

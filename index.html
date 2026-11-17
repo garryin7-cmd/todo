@@ -23,8 +23,14 @@
       <p class="today" id="today"></p>
     </header>
 
+    <!-- 🏥 외래 D-day · ⚠️ 약 재고 경고 (모든 탭 공통, dday.js가 채움) -->
+    <div class="top-bar" id="top-bar"></div>
+
     <!-- ===== 탭 1: 할 일 ===== -->
     <section class="view" id="view-todo" data-view="todo">
+
+    <!-- 1. 📌 중요 일정 D-day (dday.js가 채움) -->
+    <div class="dday-events" id="dday-events"></div>
 
     <!-- 2. 입력 영역 -->
     <form class="todo-form" id="todo-form">
@@ -140,5 +146,6 @@
   <script src="app.js"></script>
   <script src="meds.js"></script>
   <script src="health.js"></script>
+  <script src="dday.js"></script>
 </body>
 </html>

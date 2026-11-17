@@ -739,7 +739,7 @@ function historyHtml() {
 }
 
 // ===== 백업 (할 일 · 복약 · 건강수첩 전체) =====
-const BACKUP_KEYS = ['todos', 'meds', 'health'];
+const BACKUP_KEYS = ['todos', 'meds', 'health', 'dday'];
 const LAST_BACKUP_KEY = 'lastBackupAt';
 const BACKUP_REMIND_DAYS = 14;
 
@@ -908,9 +908,11 @@ function renderMeds() {
         <p class="med-help">약 이름과 개수는 이 휴대폰에만 저장돼요.<br>지금 약판에 남은 알 수를 세어서 넣어 주세요.</p>
         ${medFormHtml(null)}
       </section>${backupHtml()}`;
-    return;
+  } else {
+    medsView.innerHTML = checkCardHtml() + historyHtml() + medListHtml() + backupHtml();
   }
-  medsView.innerHTML = checkCardHtml() + historyHtml() + medListHtml() + backupHtml();
+  // 재고가 바뀌었을 수 있으니 맨 위 재고 경고도 다시 그림 (dday.js가 불러와진 뒤부터)
+  if (typeof renderTopBar === 'function') renderTopBar();
 }
 
 // ===== 이벤트 (한 곳에서 처리) =====
