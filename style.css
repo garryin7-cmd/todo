@@ -44,6 +44,7 @@ button { font: inherit; cursor: pointer; }
 /* ===== 2. 입력 영역 ===== */
 .todo-form {
   display: flex;
+  align-items: flex-start; /* 입력칸이 여러 줄로 늘어나도 옆 칸들은 위에 그대로 */
   gap: 8px;
   margin-bottom: 16px;
 }
@@ -54,6 +55,12 @@ button { font: inherit; cursor: pointer; }
   border: 1px solid var(--border);
   border-radius: var(--radius);
   font: inherit;
+  line-height: 1.45;
+  resize: none;       /* 여러 줄 입력칸: 높이는 글자 길이에 맞춰 자동 */
+  overflow: hidden;
+  display: block;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 .todo-category {
   padding: 10px 8px;
@@ -206,7 +213,7 @@ body.is-dragging-page .drag-handle { cursor: grabbing; }
   flex-direction: column;
   gap: 2px;
 }
-.todo-title { overflow-wrap: anywhere; }
+.todo-title { word-break: keep-all; overflow-wrap: anywhere; } /* 띄어쓰기에서 줄바꿈, 단어 중간에서 안 끊김 */
 .todo-time { font-size: 12px; color: var(--text-sub); }
 
 /* 할 일 아랫줄: 마감 D-day + 완료 시각 */
@@ -269,6 +276,12 @@ body.is-dragging-page .drag-handle { cursor: grabbing; }
   border: 1px solid var(--primary);
   border-radius: 6px;
   font: inherit;
+  line-height: 1.45;
+  resize: none;
+  overflow: hidden;
+  display: block;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 .edit-due {
   padding: 5px 6px;
@@ -351,6 +364,7 @@ body.is-dragging-page .drag-handle { cursor: grabbing; }
   border: 1px solid var(--border);
   border-left: 4px solid var(--cat-color, var(--border));
   border-radius: 8px;
+  word-break: keep-all;
   overflow-wrap: anywhere;
 }
 
@@ -624,5 +638,5 @@ body.is-dragging-page .drag-handle { cursor: grabbing; }
 
   /* 수정 모드: 입력창 한 줄, 카테고리·저장·취소는 그 아래 */
   .edit-input { flex-basis: 100%; }
-  .edit-category { flex: 1; }
+  .edit-due, .edit-category { flex: 1 1 0; min-width: 0; } /* 날짜·카테고리·저장·취소를 한 줄에 */
 }

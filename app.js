@@ -327,13 +327,20 @@ function createTodoElement(todo) {
   title.className = 'todo-title';
   title.textContent = todo.text; // textContent를 써야 입력한 글자가 HTML로 해석되지 않음
 
-  // 글자 + 아랫줄(마감 D-day, 완료 시각)을 세로로 묶는 칸
+  // 글자 + 아랫줄(카테고리 태그, 마감 D-day, 완료 시각)을 세로로 묶는 칸
+  // 태그를 아랫줄로 내려서 할 일 글자가 쓸 수 있는 폭을 넓힘
   const body = document.createElement('div');
   body.className = 'todo-body';
   body.appendChild(title);
 
   const meta = document.createElement('div');
   meta.className = 'todo-meta';
+
+  const tag = document.createElement('span');
+  tag.className = 'tag';
+  tag.textContent = todo.category;
+  meta.appendChild(tag);
+
   if (todo.dueDate) {
     const label = dueLabel(daysUntil(todo.dueDate));
     const due = document.createElement('small');
@@ -348,11 +355,7 @@ function createTodoElement(todo) {
     time.textContent = formatCompletedTime(todo.completedAt);
     meta.appendChild(time);
   }
-  if (meta.children.length > 0) body.appendChild(meta);
-
-  const tag = document.createElement('span');
-  tag.className = 'tag';
-  tag.textContent = todo.category;
+  body.appendChild(meta);
 
   // 드래그 손잡이 (이걸 잡고 끌어야 순서가 바뀜)
   const handle = document.createElement('span');
@@ -364,7 +367,6 @@ function createTodoElement(todo) {
     handle,
     check,
     body,
-    tag,
     createButton('btn-icon btn-edit', '✎', '수정'),
     createButton('btn-icon btn-delete', '✕', '삭제'),
   );
@@ -377,9 +379,11 @@ function createEditElement(todo) {
   li.className = `todo-item is-editing ${CATEGORY_CLASS[todo.category]}`;
   li.dataset.id = todo.id;
 
-  const textInput = document.createElement('input');
-  textInput.type = 'text';
+  // 여러 줄 입력칸 (글자가 길면 아랫줄로 넘어가며 높이가 늘어남)
+  const textInput = document.createElement('textarea');
   textInput.className = 'edit-input';
+  textInput.rows = 1;
+  textInput.enterKeyHint = 'done';
   textInput.value = todo.text;
 
   const select = document.createElement('select');
@@ -464,7 +468,11 @@ function render() {
 
   // 수정 중이면 입력창에 커서를 둠
   const editInput = list.querySelector('.edit-input');
-  if (editInput) editInput.focus();
+  if (editInput) {
+    autoResize(editInput);
+    editInput.focus();
+    editInput.setSelectionRange(editInput.value.length, editInput.value.length); // 커서를 맨 끝으로
+  }
 }
 
 // 오늘 날짜 표시 (예: 2026년 11월 17일 화요일)
@@ -486,6 +494,50 @@ function submitEdit(li) {
   updateTodo(li.dataset.id, text, category, dueDate);
 }
 
+// ===== 여러 줄 입력칸 (할 일 입력, 수정) =====
+// 글자 길이에 맞춰 입력칸 높이를 늘리거나 줄임
+function autoResize(textarea) {
+  textarea.style.height = 'auto';
+  const border = textarea.offsetHeight - textarea.clientHeight; // 위아래 테두리 두께도 포함해야 글자가 안 잘림
+  textarea.style.height = `${textarea.scrollHeight + border}px`;
+}
+
+// 할 일 안에는 줄바꿈을 넣지 않음 (붙여 넣은 글의 줄바꿈은 띄어쓰기로)
+function removeLineBreaks(textarea) {
+  if (/[\r\n]/.test(textarea.value)) {
+    const cursor = textarea.selectionStart;
+    textarea.value = textarea.value.replace(/\r?\n/g, ' ');
+    textarea.setSelectionRange(cursor, cursor);
+  }
+}
+
+// 맨 위 입력칸: 글자가 바뀔 때마다 줄바꿈 정리 + 높이 맞춤
+input.addEventListener('input', () => {
+  removeLineBreaks(input);
+  autoResize(input);
+});
+
+// 맨 위 입력칸: Enter → 추가 (줄바꿈 대신). 한글 조합 중 Enter는 무시해서 두 번 추가 방지
+input.addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter' || event.isComposing) return;
+  event.preventDefault();
+  form.requestSubmit();
+});
+
+// 수정 입력칸도 같은 처리
+list.addEventListener('input', (event) => {
+  if (!event.target.classList.contains('edit-input')) return;
+  removeLineBreaks(event.target);
+  autoResize(event.target);
+});
+
+// 화면 폭이 바뀌면(휴대폰 회전 등) 줄 수가 달라지니 높이 다시 맞춤
+window.addEventListener('resize', () => {
+  autoResize(input);
+  const editInput = list.querySelector('.edit-input');
+  if (editInput) autoResize(editInput);
+});
+
 // ===== 이벤트 =====
 // 추가 버튼 클릭 또는 Enter → 폼 제출
 form.addEventListener('submit', (event) => {
@@ -498,6 +550,7 @@ form.addEventListener('submit', (event) => {
   addTodo(text, categorySelect.value, dueInput.value);
   input.value = '';
   dueInput.value = '';
+  autoResize(input); // 비웠으니 다시 한 줄 높이로
   input.focus();
 });
 
@@ -738,7 +791,10 @@ document.addEventListener('visibilitychange', () => {
 list.addEventListener('keydown', (event) => {
   const li = event.target.closest('.is-editing');
   if (!li || event.isComposing) return; // 한글 조합 중에 누른 Enter는 무시 (두 번 실행 방지)
-  if (event.key === 'Enter') submitEdit(li);
+  if (event.key === 'Enter') {
+    event.preventDefault(); // 여러 줄 입력칸이라도 Enter는 줄바꿈이 아니라 저장
+    submitEdit(li);
+  }
   else if (event.key === 'Escape') cancelEdit();
 });
 
