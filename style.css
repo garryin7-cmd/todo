@@ -39,7 +39,7 @@ body {
 button { font: inherit; cursor: pointer; }
 
 /* ===== 1. 제목 ===== */
-.app-header h1 { margin: 0; font-size: 26px; }
+.app-header h1 { margin: 0; font-size: 26px; line-height: 1.2; } /* 하루 / 일정 두 줄 */
 .today { margin: 4px 0 20px; color: var(--text-sub); }
 
 /* ===== 2. 입력 영역 ===== */

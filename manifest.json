@@ -1,6 +1,6 @@
 {
-  "name": "하루결",
-  "short_name": "하루결",
+  "name": "하루일정",
+  "short_name": "하루일정",
   "description": "할 일, 복약, 건강수첩을 한곳에서 챙기는 개인용 앱",
   "lang": "ko",
   "start_url": "./",

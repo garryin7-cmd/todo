@@ -1,4 +1,4 @@
-// 하루결 - D-day (외래 · 중요 일정) 와 약 재고 경고
+// 하루일정 - D-day (외래 · 중요 일정) 와 약 재고 경고
 // - 🏥 외래 D-day, ⚠️ 재고 3일분 이하 경고: 세 탭 모두 맨 위(#top-bar)에 표시
 // - 📌 중요 일정(시험 등) D-day: 할 일 탭 맨 위(#dday-events)에만 표시
 // app.js의 todayString(), daysUntil(), showToast(), showTab()과

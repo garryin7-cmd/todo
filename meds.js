@@ -1,4 +1,4 @@
-// 하루결 - 복약 탭
+// 하루일정 - 복약 탭
 // 원칙: 약 이름/복용량은 코드에 쓰지 않고, 앱 안에서 입력해 휴대폰(localStorage)에만 저장
 // 흐름: 데이터(medData) 변경 → saveMeds() → renderMeds()
 // app.js에 있는 todayString(), showToast()를 같이 사용함 (index.html에서 app.js 다음에 불러옴)
@@ -769,6 +769,7 @@ function backupHtml() {
 async function saveBackup() {
   const data = {};
   BACKUP_KEYS.forEach((key) => { data[key] = localStorage.getItem(key); });
+  // app: 'harugyeol'은 옛 이름이지만, 예전 백업 파일과 호환되게 그대로 둠
   const text = JSON.stringify({ app: 'harugyeol', version: 1, exportedAt: Date.now(), data });
   const base = `harugyeol-backup-${todayString()}`;
 
@@ -781,7 +782,7 @@ async function saveBackup() {
 
   if (shareable) {
     try {
-      await navigator.share({ files: [shareable], title: '하루결 백업' });
+      await navigator.share({ files: [shareable], title: '하루일정 백업' });
       markBackedUp('백업 파일을 보냈어요');
       return;
     } catch (error) {
@@ -824,7 +825,7 @@ function loadBackup(file) {
       return;
     }
     if (!backup || backup.app !== 'harugyeol' || !backup.data) {
-      showToast('하루결 백업 파일이 아니에요');
+      showToast('하루일정 백업 파일이 아니에요');
       return;
     }
     const when = new Date(backup.exportedAt).toLocaleString('ko-KR');

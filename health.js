@@ -1,4 +1,4 @@
-// 하루결 - 건강수첩 탭
+// 하루일정 - 건강수첩 탭
 // 구성: 💧 수분 섭취(병 버튼) / 혈압·맥박·몸무게·특이사항 기록 / 기록 보기(몸무게 그래프, 표) / 설정
 // 흐름: 데이터(healthData) 변경 → saveHealth() → renderHealth()
 // app.js의 todayString(), showToast(), celebrate()와 meds.js의 escapeHtml(), addDays(), shortDate(), RANGES를 같이 사용
