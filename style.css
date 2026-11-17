@@ -344,6 +344,108 @@ body.is-dragging-page .drag-handle { cursor: grabbing; }
   overflow-wrap: anywhere;
 }
 
+/* ===== 복약 탭 ===== */
+.med-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 16px;
+  margin-bottom: 16px;
+}
+.med-card-title { margin: 0 0 12px; font-size: 15px; color: var(--text-sub); font-weight: 600; }
+.med-help { margin: 0 0 14px; color: var(--text-sub); font-size: 14px; line-height: 1.6; }
+
+/* 판에 있어야 할 알 수 (큰 숫자) */
+.pill-counts { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.pill-count {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 8px;
+  background: var(--bg);
+  border-radius: var(--radius);
+  text-align: center;
+}
+.pill-name { font-weight: 600; overflow-wrap: anywhere; }
+.pill-num { font-size: 36px; font-weight: 800; color: var(--primary); line-height: 1.2; }
+.pill-num small { font-size: 15px; font-weight: 600; margin-left: 2px; }
+.pill-sub { font-size: 12px; color: var(--text-sub); }
+
+/* 직전/현재 시간대 상태 줄 */
+.slot-rows { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.slot-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  background: var(--bg);
+}
+.slot-row.ok { background: #ebfbee; }
+.slot-row.skip { background: #f1f3f5; color: var(--text-sub); }
+.slot-row.missing { display: block; background: #fff4e6; border: 1px solid #ffc078; }
+.slot-row .compare { margin: 8px 0; padding-left: 4px; line-height: 1.8; }
+.row-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.link-btn { border: none; background: none; color: var(--text-sub); text-decoration: underline; padding: 2px 4px; font-size: 13px; }
+
+/* 복용 체크 큰 버튼 */
+.btn-take {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+}
+.btn-take:disabled { background: #d0d5dd; color: #fff; cursor: default; }
+
+/* 최근 7일, 내 약 */
+.med-section {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.med-section h3 { margin: 0 0 10px; font-size: 15px; }
+.history { width: 100%; border-collapse: collapse; font-size: 14px; }
+.history th, .history td { padding: 6px 4px; text-align: center; border-bottom: 1px solid var(--border); }
+.history tbody th { text-align: left; font-weight: 500; color: var(--text-sub); }
+.history tr:last-child th, .history tr:last-child td { border-bottom: none; }
+.mark small { display: block; font-size: 11px; color: var(--text-sub); }
+.mark.none { color: #e03131; font-weight: 700; }
+
+.med-list { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.med-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.med-info { display: flex; flex-direction: column; gap: 2px; font-size: 14px; min-width: 0; }
+.med-info span { color: var(--text-sub); font-size: 13px; }
+.med-info .stock.low { color: #e03131; font-weight: 600; }
+.med-actions { display: flex; align-items: center; gap: 2px; }
+.restock-form { flex-basis: 100%; display: flex; gap: 6px; }
+.restock-form input { flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid var(--primary); border-radius: 6px; font: inherit; }
+
+/* 약 등록/수정 입력칸 */
+.med-form { flex-basis: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.med-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--text-sub); }
+.med-form label:first-child { grid-column: 1 / -1; }
+.med-form input { padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font: inherit; color: var(--text); }
+.med-form input:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
+.med-form .row-actions { grid-column: 1 / -1; }
+
 /* ===== 하단 탭 바 ===== */
 :root { --tab-bar-height: 64px; }
 .app { padding-bottom: calc(var(--tab-bar-height) + 32px + env(safe-area-inset-bottom, 0px)); }
@@ -486,7 +588,8 @@ body.is-dragging-page .drag-handle { cursor: grabbing; }
   .todo-category { flex: 1; }
 
   /* 휴대폰에서 입력할 때 화면이 확대되지 않게 16px */
-  .todo-input, .todo-category, .todo-due, .edit-input, .edit-category, .edit-due { font-size: 16px; }
+  .todo-input, .todo-category, .todo-due, .edit-input, .edit-category, .edit-due,
+  .med-form input, .restock-form input { font-size: 16px; }
 
   .progress-categories { grid-template-columns: 1fr; gap: 8px; }
 
