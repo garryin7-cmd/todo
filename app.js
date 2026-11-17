@@ -146,8 +146,7 @@ function pickQuote() {
   return QUOTES[index];
 }
 
-// 축하 카드(명언 포함)를 6초간 보여주고 폭죽을 터뜨림 (카드를 클릭하면 바로 닫힘)
-let celebrationTimer = null;
+// 축하 카드(명언 포함)를 띄우고 폭죽을 터뜨림 (카드 바깥 클릭이나 Esc로 닫힘)
 function celebrate() {
   const quote = pickQuote();
   quoteText.textContent = `“${quote.text}”`;
@@ -155,8 +154,6 @@ function celebrate() {
 
   toast.classList.remove('is-visible'); // 보통 토스트와 겹치지 않게
   celebration.classList.add('is-visible');
-  clearTimeout(celebrationTimer);
-  celebrationTimer = setTimeout(closeCelebration, 6000);
 
   // 움직임 줄이기 설정을 켠 사용자에게는 폭죽 없이 메시지만
   if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) launchConfetti();
@@ -457,8 +454,15 @@ list.addEventListener('click', (event) => {
   else if (event.target.classList.contains('btn-cancel')) cancelEdit();
 });
 
-// 축하 카드 클릭 → 바로 닫기
-celebration.addEventListener('click', closeCelebration);
+// 축하 카드 바깥(어두운 배경)을 클릭했을 때만 닫기 (카드 안을 누르면 그대로)
+celebration.addEventListener('click', (event) => {
+  if (event.target === celebration) closeCelebration();
+});
+
+// Esc 키로도 축하 카드 닫기
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && celebration.classList.contains('is-visible')) closeCelebration();
+});
 
 // 수정 중 Enter → 저장, Esc → 취소
 list.addEventListener('keydown', (event) => {
