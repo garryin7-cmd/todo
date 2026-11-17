@@ -230,6 +230,16 @@ function drawConfetti(ctx) {
   }
 }
 
+// 화면에 보이는 할 일들의 새 순서(id 목록)를 전체 배열에 반영하고 저장
+// 필터 중이면 보이는 할 일끼리만 자리를 바꾸고, 안 보이는 할 일의 자리는 그대로 둠
+function reorderVisible(newVisibleIds) {
+  const visibleSet = new Set(newVisibleIds);
+  const queue = newVisibleIds.map((id) => findTodo(id));
+  todos = todos.map((todo) => (visibleSet.has(todo.id) ? queue.shift() : todo));
+  saveTodos();
+  render();
+}
+
 // 수정 모드 시작 / 취소
 function startEdit(id) {
   editingId = id;
@@ -299,7 +309,14 @@ function createTodoElement(todo) {
   tag.className = 'tag';
   tag.textContent = todo.category;
 
+  // 드래그 손잡이 (이걸 잡고 끌어야 순서가 바뀜)
+  const handle = document.createElement('span');
+  handle.className = 'drag-handle';
+  handle.textContent = '⠿';
+  handle.title = '끌어서 순서 바꾸기';
+
   li.append(
+    handle,
     check,
     body,
     tag,
@@ -453,6 +470,51 @@ list.addEventListener('click', (event) => {
   else if (event.target.classList.contains('btn-save')) submitEdit(li);
   else if (event.target.classList.contains('btn-cancel')) cancelEdit();
 });
+
+// ===== 드래그로 순서 바꾸기 =====
+// 마우스와 터치를 모두 처리하는 Pointer 이벤트 사용 (휴대폰에서도 동작)
+// 끄는 동안 항목을 화면에서 바로 옮기고, 손을 떼면 그 순서를 저장
+let draggingItem = null;
+
+list.addEventListener('pointerdown', (event) => {
+  const handle = event.target.closest('.drag-handle');
+  if (!handle || editingId !== null) return; // 손잡이가 아니거나 수정 중이면 무시
+  event.preventDefault();
+  draggingItem = handle.closest('.todo-item');
+  draggingItem.classList.add('is-dragging');
+  document.body.classList.add('is-dragging-page');
+  handle.setPointerCapture(event.pointerId); // 손가락/마우스가 손잡이 밖으로 나가도 계속 추적
+});
+
+list.addEventListener('pointermove', (event) => {
+  if (!draggingItem) return;
+
+  // 마우스 위치보다 아래에 중심이 있는 첫 항목 앞에 끼워 넣음 (없으면 맨 끝)
+  const others = [...list.querySelectorAll('.todo-item:not(.is-dragging)')];
+  const next = others.find((item) => {
+    const box = item.getBoundingClientRect();
+    return event.clientY < box.top + box.height / 2;
+  });
+  if (next) list.insertBefore(draggingItem, next);
+  else list.appendChild(draggingItem);
+
+  // 화면 위/아래 끝 근처에서는 자동으로 스크롤 (긴 목록, 휴대폰 대비)
+  const edge = 60;
+  if (event.clientY < edge) window.scrollBy(0, -10);
+  else if (event.clientY > window.innerHeight - edge) window.scrollBy(0, 10);
+});
+
+// 손을 떼면 바뀐 순서를 저장
+function endDrag() {
+  if (!draggingItem) return;
+  draggingItem.classList.remove('is-dragging');
+  document.body.classList.remove('is-dragging-page');
+  draggingItem = null;
+  const newOrder = [...list.querySelectorAll('.todo-item')].map((item) => item.dataset.id);
+  reorderVisible(newOrder);
+}
+list.addEventListener('pointerup', endDrag);
+list.addEventListener('pointercancel', endDrag);
 
 // 축하 카드 바깥(어두운 배경)을 클릭했을 때만 닫기 (카드 안을 누르면 그대로)
 celebration.addEventListener('click', (event) => {

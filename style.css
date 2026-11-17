@@ -157,6 +157,30 @@ button { font: inherit; cursor: pointer; }
   border-radius: var(--radius);
 }
 .todo-check { width: 18px; height: 18px; flex-shrink: 0; }
+
+/* 드래그 손잡이 */
+.drag-handle {
+  flex-shrink: 0;
+  padding: 4px 2px;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--text-sub);
+  cursor: grab;
+  user-select: none;
+  touch-action: none; /* 휴대폰에서 손잡이를 끌 때 화면이 스크롤되지 않게 */
+}
+.drag-handle:hover { color: var(--text); }
+
+/* 끌고 있는 항목 */
+.todo-item.is-dragging {
+  position: relative;
+  z-index: 1;
+  border-color: var(--primary);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+/* 끄는 동안 글자가 선택되지 않게 */
+body.is-dragging-page { user-select: none; cursor: grabbing; }
+body.is-dragging-page .drag-handle { cursor: grabbing; }
 .todo-body {
   flex: 1;
   min-width: 0;
@@ -343,6 +367,7 @@ button { font: inherit; cursor: pointer; }
   /* 할 일 항목: 버튼을 손가락으로 누르기 쉽게 */
   .todo-item { gap: 8px; padding: 10px; }
   .btn-icon { padding: 8px; }
+  .drag-handle { padding: 8px 4px; font-size: 20px; } /* 손가락으로 잡기 쉽게 */
 
   /* 수정 모드: 입력창 한 줄, 카테고리·저장·취소는 그 아래 */
   .edit-input { flex-basis: 100%; }
