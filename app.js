@@ -735,7 +735,7 @@ document.addEventListener('keydown', (event) => {
 
 // ===== 마감 경고 카드 =====
 // 하루 두 번: 그날 처음 열 때 한 번, 밤(21시 이후) 처음 열 때 한 번
-// (브라우저는 앱을 "닫는 순간"에 화면을 띄울 수 없어서, 하루 마무리 시간대로 대신함)
+// + 뒤로 가기로 앱을 끌 때 한 번 (dday.js의 '뒤로 가기 2번 종료')
 const DEADLINE_SHOWN_KEY = 'deadlineAlertShown'; // { date: 'YYYY-MM-DD', slots: ['day', 'night'] }
 const NIGHT_HOUR = 21;
 
@@ -757,6 +757,8 @@ function fillDeadlineAlert(urgent) {
   // 내일 마감만 있으면 요청하신 문구 그대로, 섞여 있으면 더 넓은 문구
   const onlyTomorrow = groups.length === 1 && groups[0].level === 'soon';
   deadlineTitle.textContent = onlyTomorrow ? '마감일이 내일입니다' : '마감이 다가온 할 일이 있어요';
+  document.querySelector('.deadline-sub').textContent = '할 일은 다 하셨나요?';
+  document.getElementById('deadline-hint').textContent = '바깥을 누르거나 Esc를 눌러 닫기';
 
   deadlineGroups.innerHTML = '';
   groups.forEach((group) => {

@@ -170,6 +170,77 @@ document.addEventListener('visibilitychange', () => {
   if (!eventFormOpen) renderEvents();
 });
 
+// ===== 뒤로 가기 2번 종료 =====
+// 원리: 화면을 한 번 만지면 방문 기록에 '가짜 한 칸'을 넣어 둠 → 뒤로 가기를 누르면 그 칸만 빠짐(앱 유지)
+//      → 그때 꼭 알아야 할 정보(마감 할 일, 외래, 재고) 카드나 안내를 띄우고, 한 번 더 누르면 실제로 종료
+// (크롬은 사용자가 화면을 만지기 전에 넣은 칸은 무시하므로, 만질 때 넣음)
+const EXIT_HINT = '뒤로 가기를 한 번 더 누르면 종료돼요';
+let backGuarded = false;
+
+function armBackGuard() {
+  if (backGuarded) return;
+  history.pushState({ haru: 'guard' }, '');
+  backGuarded = true;
+}
+['pointerdown', 'keydown'].forEach((type) => document.addEventListener(type, armBackGuard, true));
+
+// 끄기 전에 꼭 확인할 것: 외래 오늘/내일, 재고 3일분 이하
+function exitReminders() {
+  const lines = [];
+  if (ddayData.clinic) {
+    const days = daysUntil(ddayData.clinic);
+    if (days === 0) lines.push('🏥 오늘 외래 가는 날이에요');
+    else if (days === 1) lines.push('🏥 내일 외래예요');
+  }
+  if (typeof medData !== 'undefined') {
+    medData.meds.forEach((m) => {
+      const days = daysOfStock(m);
+      if (days <= STOCK_WARN_DAYS) lines.push(`⚠️ ${m.name} 재고 ${days}일분 남음`);
+    });
+  }
+  return lines;
+}
+
+function showExitNotice() {
+  const urgent = getUrgentTodos();
+  const reminders = exitReminders();
+  if (urgent.length === 0 && reminders.length === 0) { showToast(EXIT_HINT); return; }
+
+  fillDeadlineAlert(urgent);
+  if (urgent.length === 0) {
+    deadlineTitle.textContent = '끄기 전에 확인하세요';
+    document.querySelector('.deadline-sub').textContent = '';
+  }
+  if (reminders.length > 0) {
+    const heading = document.createElement('p');
+    heading.className = 'deadline-group-label due-over';
+    heading.textContent = '꼭 확인';
+    const ul = document.createElement('ul');
+    ul.className = 'deadline-list exit-list';
+    reminders.forEach((text) => {
+      const li = document.createElement('li');
+      li.textContent = text;
+      ul.appendChild(li);
+    });
+    deadlineGroups.prepend(heading, ul);
+  }
+  document.getElementById('deadline-hint').textContent = `${EXIT_HINT}
+바깥을 누르면 닫기`;
+  deadlineAlert.classList.add('is-visible');
+}
+
+window.addEventListener('popstate', () => {
+  backGuarded = false; // 가짜 칸이 빠짐 → 다음 뒤로 가기는 실제 종료 (그 전에 화면을 만지면 다시 넣음)
+  const open = document.querySelectorAll('.overlay.is-visible, .celebration.is-visible');
+  if (open.length > 0) {
+    // 떠 있는 카드가 있으면 그것부터 닫음
+    open.forEach((el) => el.classList.remove('is-visible'));
+    showToast(EXIT_HINT);
+    return;
+  }
+  showExitNotice();
+});
+
 // ===== 시작 =====
 renderTopBar();
 renderEvents();

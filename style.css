@@ -369,6 +369,9 @@ body.is-dragging-page .drag-handle { cursor: grabbing; }
   overflow-wrap: anywhere;
 }
 
+.exit-list li { border-left-color: #e03131; font-weight: 600; } /* 끌 때 카드: 외래·재고 */
+#deadline-hint { white-space: pre-line; line-height: 1.6; }
+
 /* ===== 복약 탭 ===== */
 .med-card {
   background: var(--card);
