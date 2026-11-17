@@ -104,7 +104,7 @@ function renderEvents() {
       <input type="date" name="date" min="${todayString()}" required>
       <button type="submit" class="btn-small btn-save">추가</button>
       <button type="button" class="btn-small" data-action="event-cancel">취소</button>
-    </form>` : '<button type="button" class="link-btn" data-action="event-open">+ 중요 일정 D-day</button>';
+    </form>` : '<button type="button" class="event-add" data-action="event-open">📌 + 중요 일정 D-day</button>';
 
   eventsBox.innerHTML = `${items ? `<ul class="event-list">${items}</ul>` : ''}${form}`;
 }

@@ -781,6 +781,24 @@ function fillDeadlineAlert(urgent) {
   });
 }
 
+// 기한 지난 할 일 자동 정리 (마감일 없는 할 일은 그대로)
+//   완료한 일: 마감 다음 날 삭제 / 안 한 일: 'N일 지남'으로 7일 남겼다가 8일째 삭제
+const OVERDUE_KEEP_DAYS = 7;
+
+function cleanupOverdueTodos() {
+  const before = todos.length;
+  todos = todos.filter((todo) => {
+    if (!todo.dueDate) return true;
+    const days = daysUntil(todo.dueDate); // 지났으면 음수 (어제 = -1)
+    return todo.done ? days >= 0 : days >= -OVERDUE_KEEP_DAYS;
+  });
+  const removed = before - todos.length;
+  if (removed > 0) {
+    saveTodos();
+    showToast(`기한 지난 할 일 ${removed}개를 정리했어요`);
+  }
+}
+
 // 지금 띄워야 하면 띄움 (이번 시간대에 이미 띄웠으면 건너뜀)
 function checkDeadlineAlert() {
   const urgent = getUrgentTodos();
@@ -817,6 +835,7 @@ deadlineAlert.addEventListener('click', (event) => {
 // 설치한 앱은 껐다 켜지 않고 다시 화면으로 돌아오는 경우가 많아서, 돌아올 때도 확인
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
+    cleanupOverdueTodos();
     render(); // 날짜가 바뀌었으면 D-day도 새로 계산
     checkDeadlineAlert();
   }
@@ -857,6 +876,7 @@ tabBar.addEventListener('click', (event) => {
 
 // ===== 시작 =====
 showToday();
+cleanupOverdueTodos();
 render();
 const savedTab = localStorage.getItem(TAB_KEY);
 showTab(['todo', 'meds', 'health'].includes(savedTab) ? savedTab : 'todo');

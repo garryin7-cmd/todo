@@ -748,6 +748,16 @@ body.is-dragging-page .drag-handle { cursor: grabbing; }
 .event-item.is-today { border-color: #e03131; }
 .event-item.is-today .event-dday { color: #e03131; }
 .event-form input[name="name"] { flex-basis: 100%; }
+.event-add {
+  width: 100%;
+  padding: 7px 12px;
+  border: 1px dashed #c5cad1;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-sub);
+  font-size: 13px;
+}
+.event-add:hover { border-color: var(--primary); color: var(--primary); }
 
 /* 날짜·시각 칸 아이콘을 손가락으로 누르기 쉽게 키움 (칸 아무 곳이나 눌러도 열림) */
 input[type="date"], input[type="time"], input[type="datetime-local"] { cursor: pointer; }
