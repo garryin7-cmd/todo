@@ -67,6 +67,15 @@
   <!-- 토스트 알림 (추가/삭제/완료 시 2초간 표시) -->
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+  <!-- 100% 달성 축하: 폭죽 그림판 + 가운데 메시지 카드 -->
+  <canvas class="confetti" id="confetti"></canvas>
+  <div class="celebration" id="celebration" role="status" aria-live="polite">
+    <div class="celebration-card">
+      <div class="celebration-emoji">🎉</div>
+      <p>축하드려요,<br>오늘 할 일을 모두 완료했습니다</p>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>

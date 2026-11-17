@@ -10,6 +10,8 @@ const input = document.getElementById('todo-input');
 const categorySelect = document.getElementById('todo-category');
 const list = document.getElementById('todo-list');
 const toast = document.getElementById('toast');
+const confettiCanvas = document.getElementById('confetti');
+const celebration = document.getElementById('celebration');
 const todayText = document.getElementById('today');
 const filterBar = document.getElementById('filters');
 const totalText = document.getElementById('progress-total-text');
@@ -68,7 +70,11 @@ function toggleTodo(id) {
   todo.completedAt = todo.done ? Date.now() : null;
   saveTodos();
   render();
-  showToast(todo.done ? '완료했어요' : '완료를 취소했어요');
+
+  // 방금 체크로 전부 완료됐으면 축하, 아니면 보통 토스트
+  const allDone = todos.every((item) => item.done);
+  if (todo.done && allDone) celebrate();
+  else showToast(todo.done ? '완료했어요' : '완료를 취소했어요');
 }
 
 // 글자와 카테고리를 바꾸고 저장
@@ -100,6 +106,90 @@ function showToast(message) {
   toast.classList.add('is-visible');
   clearTimeout(toastTimer); // 연속으로 누르면 이전 타이머는 취소하고 2초를 다시 셈
   toastTimer = setTimeout(() => toast.classList.remove('is-visible'), 2000);
+}
+
+// ===== 100% 축하 =====
+// 축하 카드를 3초간 보여주고 폭죽을 터뜨림 (카드를 클릭하면 바로 닫힘)
+let celebrationTimer = null;
+function celebrate() {
+  toast.classList.remove('is-visible'); // 보통 토스트와 겹치지 않게
+  celebration.classList.add('is-visible');
+  clearTimeout(celebrationTimer);
+  celebrationTimer = setTimeout(closeCelebration, 3000);
+
+  // 움직임 줄이기 설정을 켠 사용자에게는 폭죽 없이 메시지만
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) launchConfetti();
+}
+function closeCelebration() {
+  celebration.classList.remove('is-visible');
+}
+
+// 폭죽: 색종이 조각들을 화면 아래쪽에서 위로 쏘아 올리고 중력으로 떨어뜨림
+const CONFETTI_COLORS = ['#e8590c', '#2f9e44', '#1c7ed6', '#f59f00', '#e64980', '#7048e8'];
+let confettiPieces = [];
+let confettiRunning = false;
+
+function launchConfetti() {
+  // 화면 크기에 맞춰 그림판 크기 조정 (고해상도 화면에서도 선명하게)
+  const ratio = window.devicePixelRatio || 1;
+  confettiCanvas.width = window.innerWidth * ratio;
+  confettiCanvas.height = window.innerHeight * ratio;
+  const ctx = confettiCanvas.getContext('2d');
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+  // 왼쪽 아래, 오른쪽 아래 두 곳에서 75개씩 발사
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  [[w * 0.2, 1], [w * 0.8, -1]].forEach(([startX, direction]) => {
+    for (let i = 0; i < 75; i++) {
+      confettiPieces.push({
+        x: startX,
+        y: h,
+        vx: direction * (Math.random() * 6 + 1) + (Math.random() - 0.5) * 4, // 가로 속도
+        vy: -(Math.random() * 10 + Math.max(h / 60, 10)),                    // 세로 속도 (위로)
+        size: Math.random() * 6 + 5,
+        color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+        angle: Math.random() * Math.PI,
+        spin: (Math.random() - 0.5) * 0.3,
+      });
+    }
+  });
+
+  if (!confettiRunning) {
+    confettiRunning = true;
+    requestAnimationFrame(() => drawConfetti(ctx));
+  }
+}
+
+// 한 프레임 그리기: 위치 이동 → 그리기 → 화면 밖으로 나간 조각은 제거
+function drawConfetti(ctx) {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  ctx.clearRect(0, 0, w, h);
+
+  confettiPieces.forEach((p) => {
+    p.vy += 0.3;   // 중력
+    p.vx *= 0.99;  // 공기 저항
+    p.x += p.vx;
+    p.y += p.vy;
+    p.angle += p.spin;
+
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.angle);
+    ctx.fillStyle = p.color;
+    ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2); // 납작한 직사각형 종잇조각
+    ctx.restore();
+  });
+
+  confettiPieces = confettiPieces.filter((p) => p.y < h + 20 || p.vy < 0);
+
+  if (confettiPieces.length > 0) {
+    requestAnimationFrame(() => drawConfetti(ctx));
+  } else {
+    ctx.clearRect(0, 0, w, h);
+    confettiRunning = false;
+  }
 }
 
 // 수정 모드 시작 / 취소
@@ -325,6 +415,9 @@ list.addEventListener('click', (event) => {
   else if (event.target.classList.contains('btn-save')) submitEdit(li);
   else if (event.target.classList.contains('btn-cancel')) cancelEdit();
 });
+
+// 축하 카드 클릭 → 바로 닫기
+celebration.addEventListener('click', closeCelebration);
 
 // 수정 중 Enter → 저장, Esc → 취소
 list.addEventListener('keydown', (event) => {
