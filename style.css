@@ -299,6 +299,22 @@ button { font: inherit; cursor: pointer; }
   font-weight: 600;
   line-height: 1.5;
 }
+.celebration-card { max-width: 420px; }
+.celebration-quote {
+  margin: 18px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+}
+.celebration-quote cite {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+  font-style: normal;
+  color: var(--text-sub);
+}
 
 /* ===== 좁은 화면 (휴대폰) ===== */
 @media (max-width: 480px) {

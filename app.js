@@ -12,6 +12,32 @@ const list = document.getElementById('todo-list');
 const toast = document.getElementById('toast');
 const confettiCanvas = document.getElementById('confetti');
 const celebration = document.getElementById('celebration');
+const quoteText = document.getElementById('quote-text');
+const quoteAuthor = document.getElementById('quote-author');
+
+// ===== 축하 카드에 띄울 명언 (출처가 비교적 확실한 것만) =====
+const QUOTES = [
+  { text: '적지만, 무르익은 것을.', author: '카를 프리드리히 가우스 (평생의 좌우명)' },
+  { text: '수학은 과학의 여왕이고, 정수론은 수학의 여왕이다.', author: '카를 프리드리히 가우스' },
+  { text: '가장 큰 즐거움을 주는 것은 지식 자체가 아니라 배우는 행위이고, 도달한 상태가 아니라 도달해 가는 과정이다.', author: '카를 프리드리히 가우스 (1808년, 볼야이에게 보낸 편지)' },
+  { text: '내가 더 멀리 보았다면, 그것은 거인들의 어깨 위에 서 있었기 때문이다.', author: '아이작 뉴턴 (1675년, 훅에게 보낸 편지)' },
+  { text: '우리는 무언가에 재능이 있다고 믿어야 하고, 어떤 대가를 치르더라도 그것을 이뤄내야 한다.', author: '마리 퀴리' },
+  { text: '첫 번째 원칙은 자기 자신을 속이지 않는 것이다. 그리고 가장 속이기 쉬운 사람은 바로 자기 자신이다.', author: '리처드 파인만' },
+  { text: '내가 만들 수 없는 것은, 내가 이해하지 못한 것이다.', author: '리처드 파인만 (마지막 칠판에 남긴 글)' },
+  { text: '중요한 것은 질문을 멈추지 않는 것이다.', author: '알베르트 아인슈타인' },
+  { text: '인생은 자전거를 타는 것과 같다. 균형을 잡으려면 계속 움직여야 한다.', author: '알베르트 아인슈타인 (1930년, 아들에게 보낸 편지)' },
+  { text: '관찰의 영역에서 우연은 준비된 마음만을 돕는다.', author: '루이 파스퇴르' },
+  { text: '모든 사람은 원한다면 자기 뇌의 조각가가 될 수 있다.', author: '산티아고 라몬 이 카할' },
+  { text: '인생은 짧고, 의술은 길다.', author: '히포크라테스' },
+  { text: '나는 내 성공의 이유를 이것으로 돌린다. 나는 핑계를 대지도, 받아주지도 않았다.', author: '플로렌스 나이팅게일' },
+  { text: '한 시간을 감히 낭비하는 사람은 아직 삶의 가치를 발견하지 못한 것이다.', author: '찰스 다윈 (누이에게 보낸 편지)' },
+  { text: '잃어버린 시간은 다시 찾을 수 없다.', author: '벤저민 프랭클린' },
+  { text: '어려워서 감히 하지 못하는 것이 아니다. 감히 하지 않기 때문에 어려운 것이다.', author: '세네카' },
+  { text: '앞을 가로막는 것이 곧 길이 된다.', author: '마르쿠스 아우렐리우스, 《명상록》' },
+  { text: '배우고 때때로 익히면 또한 기쁘지 아니한가.', author: '공자, 《논어》' },
+  { text: '아는 것을 안다고 하고, 모르는 것을 모른다고 하는 것이 진정 아는 것이다.', author: '공자, 《논어》' },
+  { text: '죽고자 하면 살고, 살고자 하면 죽는다.', author: '이순신, 《난중일기》' },
+];
 const todayText = document.getElementById('today');
 const filterBar = document.getElementById('filters');
 const totalText = document.getElementById('progress-total-text');
@@ -109,13 +135,28 @@ function showToast(message) {
 }
 
 // ===== 100% 축하 =====
-// 축하 카드를 3초간 보여주고 폭죽을 터뜨림 (카드를 클릭하면 바로 닫힘)
+// 명언 하나를 무작위로 고름 (바로 전에 나온 것은 제외)
+let lastQuoteIndex = -1;
+function pickQuote() {
+  let index;
+  do {
+    index = Math.floor(Math.random() * QUOTES.length);
+  } while (index === lastQuoteIndex && QUOTES.length > 1);
+  lastQuoteIndex = index;
+  return QUOTES[index];
+}
+
+// 축하 카드(명언 포함)를 6초간 보여주고 폭죽을 터뜨림 (카드를 클릭하면 바로 닫힘)
 let celebrationTimer = null;
 function celebrate() {
+  const quote = pickQuote();
+  quoteText.textContent = `“${quote.text}”`;
+  quoteAuthor.textContent = `— ${quote.author}`;
+
   toast.classList.remove('is-visible'); // 보통 토스트와 겹치지 않게
   celebration.classList.add('is-visible');
   clearTimeout(celebrationTimer);
-  celebrationTimer = setTimeout(closeCelebration, 3000);
+  celebrationTimer = setTimeout(closeCelebration, 6000);
 
   // 움직임 줄이기 설정을 켠 사용자에게는 폭죽 없이 메시지만
   if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) launchConfetti();
