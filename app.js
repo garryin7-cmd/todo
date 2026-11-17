@@ -11,11 +11,16 @@ const categorySelect = document.getElementById('todo-category');
 const list = document.getElementById('todo-list');
 const emptyMessage = document.getElementById('empty');
 const todayText = document.getElementById('today');
+const filterBar = document.getElementById('filters');
+const totalText = document.getElementById('progress-total-text');
+const totalBar = document.getElementById('progress-total-bar');
+const categoryProgressItems = document.querySelectorAll('.progress-categories li');
 
 // ===== 데이터 =====
 // 할 일 하나: { id, text, category, done, createdAt }
 let todos = loadTodos();
 let editingId = null; // 지금 수정 중인 할 일의 id (없으면 null)
+let currentFilter = '전체'; // 화면에 보여줄 카테고리 (저장하지 않음, 표시용)
 
 // localStorage에서 목록을 불러옴 (없거나 깨져 있으면 빈 배열)
 function loadTodos() {
@@ -166,14 +171,57 @@ function createEditElement(todo) {
   return li;
 }
 
-// 목록 전체를 다시 그림
+// 완료 수, 전체 수, 퍼센트를 계산
+function getProgress(items) {
+  const total = items.length;
+  const done = items.filter((todo) => todo.done).length;
+  const percent = total === 0 ? 0 : Math.round((done / total) * 100);
+  return { done, total, percent };
+}
+
+// 진행률 영역 갱신 (필터와 상관없이 전체 할 일 기준)
+function renderProgress() {
+  const all = getProgress(todos);
+  totalText.textContent = `${all.done} / ${all.total}, ${all.percent}%`;
+  totalBar.style.width = `${all.percent}%`;
+
+  categoryProgressItems.forEach((item) => {
+    const category = item.dataset.category;
+    const p = getProgress(todos.filter((todo) => todo.category === category));
+    item.querySelector('.cat-count').textContent = `${p.done} / ${p.total}`;
+    item.querySelector('.bar-fill').style.width = `${p.percent}%`;
+  });
+}
+
+// 필터 탭의 선택 표시 갱신
+function renderFilters() {
+  filterBar.querySelectorAll('.filter').forEach((button) => {
+    button.classList.toggle('is-active', button.dataset.filter === currentFilter);
+  });
+}
+
+// 목록 전체를 다시 그림 (목록 + 진행률 + 필터 탭)
 function render() {
+  const visibleTodos = currentFilter === '전체'
+    ? todos
+    : todos.filter((todo) => todo.category === currentFilter);
+
   list.innerHTML = '';
-  todos.forEach((todo) => {
+  visibleTodos.forEach((todo) => {
     const element = todo.id === editingId ? createEditElement(todo) : createTodoElement(todo);
     list.appendChild(element);
   });
-  emptyMessage.hidden = todos.length > 0;
+
+  // 비어 있을 때 안내 문구
+  if (todos.length === 0) {
+    emptyMessage.textContent = '할 일이 없어요. 위에서 추가해 보세요.';
+  } else {
+    emptyMessage.textContent = `'${currentFilter}' 할 일이 없어요.`;
+  }
+  emptyMessage.hidden = visibleTodos.length > 0;
+
+  renderProgress();
+  renderFilters();
 
   // 수정 중이면 입력창에 커서를 둠
   const editInput = list.querySelector('.edit-input');
@@ -210,6 +258,15 @@ form.addEventListener('submit', (event) => {
   addTodo(text, categorySelect.value);
   input.value = '';
   input.focus();
+});
+
+// 필터 탭 클릭 → 해당 카테고리만 보기
+filterBar.addEventListener('click', (event) => {
+  const button = event.target.closest('.filter');
+  if (!button) return;
+  currentFilter = button.dataset.filter;
+  editingId = null; // 필터를 바꾸면 수정 중이던 것은 취소
+  render();
 });
 
 // 목록 안의 클릭을 한 곳에서 처리 (이벤트 위임)
