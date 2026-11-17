@@ -600,3 +600,11 @@ list.addEventListener('keydown', (event) => {
 // ===== 시작 =====
 showToday();
 render();
+
+// PWA: 서비스 워커 등록 (오프라인 실행 + 앱 설치 가능하게)
+// 내 컴퓨터에서 index.html을 더블클릭해 열 때(file://)는 지원 안 되므로 건너뜀
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  navigator.serviceWorker.register('sw.js').catch((error) => {
+    console.error('서비스 워커 등록 실패:', error);
+  });
+}
