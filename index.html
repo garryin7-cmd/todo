@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>할 일 관리</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+
+    <!-- 1. 제목 -->
+    <header class="app-header">
+      <h1>할 일 관리</h1>
+      <p class="today" id="today">2026년 11월 17일 화요일</p>
+    </header>
+
+    <!-- 2. 입력 영역 -->
+    <form class="todo-form" id="todo-form">
+      <input type="text" id="todo-input" class="todo-input" placeholder="할 일을 입력하세요" autocomplete="off">
+      <select id="todo-category" class="todo-category">
+        <option value="업무">업무</option>
+        <option value="개인">개인</option>
+        <option value="공부">공부</option>
+      </select>
+      <button type="submit" class="btn-add">추가</button>
+    </form>
+
+    <!-- 3. 진행률 영역 -->
+    <section class="progress" id="progress">
+      <div class="progress-total">
+        <div class="progress-label">
+          <span>전체 진행률</span>
+          <span id="progress-total-text">1 / 3 (33%)</span>
+        </div>
+        <div class="bar"><div class="bar-fill" id="progress-total-bar" style="width: 33%"></div></div>
+      </div>
+      <ul class="progress-categories">
+        <li class="cat-work">
+          <span class="progress-label"><span>업무</span><span>0 / 1</span></span>
+          <div class="bar bar-sm"><div class="bar-fill" style="width: 0%"></div></div>
+        </li>
+        <li class="cat-personal">
+          <span class="progress-label"><span>개인</span><span>1 / 1</span></span>
+          <div class="bar bar-sm"><div class="bar-fill" style="width: 100%"></div></div>
+        </li>
+        <li class="cat-study">
+          <span class="progress-label"><span>공부</span><span>0 / 1</span></span>
+          <div class="bar bar-sm"><div class="bar-fill" style="width: 0%"></div></div>
+        </li>
+      </ul>
+    </section>
+
+    <!-- 4. 카테고리 필터 탭 -->
+    <nav class="filters" id="filters">
+      <button type="button" class="filter is-active" data-filter="전체">전체</button>
+      <button type="button" class="filter" data-filter="업무">업무</button>
+      <button type="button" class="filter" data-filter="개인">개인</button>
+      <button type="button" class="filter" data-filter="공부">공부</button>
+    </nav>
+
+    <!-- 5. 할 일 목록 (아래 3개는 모양 확인용 예시. 2단계에서 JS가 그리도록 바꿀 예정) -->
+    <ul class="todo-list" id="todo-list">
+      <li class="todo-item cat-work">
+        <input type="checkbox" class="todo-check">
+        <span class="todo-title">실험 보고서 초안 작성</span>
+        <span class="tag">업무</span>
+        <button type="button" class="btn-icon" title="수정">✎</button>
+        <button type="button" class="btn-icon btn-delete" title="삭제">✕</button>
+      </li>
+      <li class="todo-item cat-personal is-done">
+        <input type="checkbox" class="todo-check" checked>
+        <span class="todo-title">장보기</span>
+        <span class="tag">개인</span>
+        <button type="button" class="btn-icon" title="수정">✎</button>
+        <button type="button" class="btn-icon btn-delete" title="삭제">✕</button>
+      </li>
+      <li class="todo-item cat-study">
+        <input type="checkbox" class="todo-check">
+        <span class="todo-title">신호처리 3장 복습</span>
+        <span class="tag">공부</span>
+        <button type="button" class="btn-icon" title="수정">✎</button>
+        <button type="button" class="btn-icon btn-delete" title="삭제">✕</button>
+      </li>
+    </ul>
+
+    <!-- 할 일이 없을 때 보여줄 안내 문구 -->
+    <p class="empty" id="empty" hidden>할 일이 없어요. 위에서 추가해 보세요.</p>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

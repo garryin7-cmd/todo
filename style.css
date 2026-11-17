@@ -1,0 +1,200 @@
+/* ===== 색상, 간격 변수 ===== */
+:root {
+  --bg: #f5f6f8;
+  --card: #ffffff;
+  --text: #1f2328;
+  --text-sub: #6b7280;
+  --border: #e3e5e8;
+  --primary: #3b5bdb;
+
+  /* 카테고리 색상 */
+  --cat-work: #e8590c;      /* 업무: 주황 */
+  --cat-personal: #2f9e44;  /* 개인: 초록 */
+  --cat-study: #1c7ed6;     /* 공부: 파랑 */
+
+  --radius: 10px;
+}
+
+/* ===== 기본 ===== */
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Pretendard", "Malgun Gothic", system-ui, sans-serif;
+  font-size: 15px;
+}
+
+.app {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 32px 16px 48px;
+}
+
+button { font: inherit; cursor: pointer; }
+
+/* ===== 1. 제목 ===== */
+.app-header h1 { margin: 0; font-size: 26px; }
+.today { margin: 4px 0 20px; color: var(--text-sub); }
+
+/* ===== 2. 입력 영역 ===== */
+.todo-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.todo-input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font: inherit;
+}
+.todo-category {
+  padding: 10px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font: inherit;
+  background: var(--card);
+}
+.btn-add {
+  padding: 10px 16px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: #fff;
+  font-weight: 600;
+}
+.todo-input:focus, .todo-category:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
+
+/* ===== 3. 진행률 영역 ===== */
+.progress {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+.progress-total .progress-label { font-weight: 600; }
+
+.bar {
+  height: 10px;
+  background: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.bar-sm { height: 6px; }
+.bar-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 999px;
+  transition: width 0.3s;
+}
+
+.progress-categories {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.progress-categories .progress-label { font-size: 13px; color: var(--text-sub); }
+.progress-categories .cat-work .bar-fill { background: var(--cat-work); }
+.progress-categories .cat-personal .bar-fill { background: var(--cat-personal); }
+.progress-categories .cat-study .bar-fill { background: var(--cat-study); }
+
+/* ===== 4. 필터 탭 ===== */
+.filters {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.filter {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--text-sub);
+}
+.filter.is-active {
+  background: var(--text);
+  border-color: var(--text);
+  color: #fff;
+}
+
+/* ===== 5. 할 일 목록 ===== */
+.todo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.todo-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--cat-color, var(--border));
+  border-radius: var(--radius);
+}
+.todo-check { width: 18px; height: 18px; flex-shrink: 0; }
+.todo-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+
+/* 카테고리 태그 */
+.tag {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--cat-color);
+  border: 1px solid var(--cat-color);
+  flex-shrink: 0;
+}
+.cat-work     { --cat-color: var(--cat-work); }
+.cat-personal { --cat-color: var(--cat-personal); }
+.cat-study    { --cat-color: var(--cat-study); }
+
+/* 수정, 삭제 버튼 */
+.btn-icon {
+  border: none;
+  background: none;
+  color: var(--text-sub);
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+.btn-icon:hover { background: var(--bg); color: var(--text); }
+.btn-delete:hover { color: #e03131; }
+
+/* 완료된 항목 */
+.todo-item.is-done .todo-title {
+  text-decoration: line-through;
+  color: var(--text-sub);
+}
+.todo-item.is-done { opacity: 0.7; }
+
+/* 할 일이 없을 때 */
+.empty {
+  text-align: center;
+  color: var(--text-sub);
+  padding: 32px 0;
+}
+
+/* ===== 좁은 화면 (휴대폰) ===== */
+@media (max-width: 480px) {
+  .todo-form { flex-wrap: wrap; }
+  .todo-input { flex-basis: 100%; }
+  .todo-category { flex: 1; }
+  .progress-categories { grid-template-columns: 1fr; }
+}
