@@ -150,7 +150,7 @@ function pickQuote() {
 function celebrate() {
   const quote = pickQuote();
   quoteText.textContent = `“${quote.text}”`;
-  quoteAuthor.textContent = `— ${quote.author}`;
+  quoteAuthor.textContent = `— ${quote.author} —`;
 
   toast.classList.remove('is-visible'); // 보통 토스트와 겹치지 않게
   celebration.classList.add('is-visible');
