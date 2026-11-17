@@ -39,7 +39,7 @@ body {
 button { font: inherit; cursor: pointer; }
 
 /* ===== 1. 제목 ===== */
-.app-header h1 { margin: 0; font-size: 26px; line-height: 1.2; } /* 하루 / 일정 두 줄 */
+.app-header h1 { margin: 0; font-size: 26px; }
 .today { margin: 4px 0 20px; color: var(--text-sub); }
 
 /* ===== 2. 입력 영역 ===== */
@@ -520,8 +520,10 @@ body.is-dragging-page .drag-handle { cursor: grabbing; }
 .backup-warn { color: #e03131; font-weight: 600; }
 
 /* 약 등록/수정 입력칸 */
-.med-form { flex-basis: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.med-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--text-sub); }
+/* minmax(0, 1fr): 입력칸의 기본 최소 폭 때문에 좁은 폰에서 화면 밖으로 밀리지 않게 */
+.med-form { flex-basis: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.med-form label { display: flex; flex-direction: column; gap: 4px; min-width: 0; font-size: 13px; color: var(--text-sub); }
+.med-form input, .med-form textarea { width: 100%; min-width: 0; }
 .med-form label:first-child { grid-column: 1 / -1; }
 .med-form input { padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font: inherit; color: var(--text); }
 .med-form input:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
@@ -662,7 +664,8 @@ body.is-dragging-page .drag-handle { cursor: grabbing; }
 .water-btn:active { background: #d0ebff; }
 .water-form { display: flex; gap: 6px; margin-top: 10px; }
 .water-form input { flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid var(--primary); border-radius: 6px; font: inherit; }
-.water-links { display: flex; justify-content: space-between; }
+.water-links { display: flex; justify-content: flex-end; }
+.water-custom-btn { margin-top: 8px; }
 
 /* 기록 입력칸 */
 .btn-small.wide { width: 100%; padding: 10px; font-size: 15px; }

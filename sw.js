@@ -2,7 +2,7 @@
 // 방식: 인터넷이 되면 항상 최신 파일을 받아오고(그리고 캐시 갱신), 안 되면 캐시에서 꺼내 씀
 // → git push 한 수정 사항이 바로 반영되면서도 오프라인에서 동작
 
-const CACHE_NAME = 'harugyeol-v9'; // 파일 구성이 바뀌면 숫자를 올림
+const CACHE_NAME = 'harugyeol-v10'; // 파일 구성이 바뀌면 숫자를 올림
 const APP_FILES = [
   './',
   './index.html',

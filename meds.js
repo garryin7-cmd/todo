@@ -894,7 +894,7 @@ function medFormHtml(med) {
       <label>1회 복용 (알)<input type="number" name="dose" min="1" step="1" inputmode="numeric" value="${v.dose}"></label>
       <label>한 판 (알)<input type="number" name="sheetSize" min="1" step="1" inputmode="numeric" value="${v.sheetSize}"></label>
       <label>지금 판에 남은 알<input type="number" name="sheetLeft" min="0" step="1" inputmode="numeric" value="${v.sheetLeft}"></label>
-      <label>전체 재고 (알)<input type="number" name="stock" min="0" step="1" inputmode="numeric" value="${v.stock}" placeholder="판에 남은 것 포함"></label>
+      <label>전체 재고 (알)<input type="number" name="stock" min="0" step="1" inputmode="numeric" value="${v.stock}" placeholder="판 포함"></label>
       <div class="row-actions">
         <button type="submit" class="btn-small btn-save">${med ? '저장' : '등록'}</button>
         ${medData.meds.length > 0 ? '<button type="button" class="btn-small" data-action="form-cancel">취소</button>' : ''}

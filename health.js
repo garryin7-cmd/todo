@@ -135,10 +135,8 @@ function waterCardHtml() {
       ${goalHtml}
       <div class="water-btns">${bottleButtons}</div>
       ${customForm}
-      <div class="water-links">
-        ${healthCustomOpen ? '' : '<button type="button" class="link-btn" data-action="water-custom">직접 입력</button>'}
-        ${count ? '<button type="button" class="link-btn danger" data-action="water-undo">방금 것 취소</button>' : ''}
-      </div>
+      ${healthCustomOpen ? '' : '<button type="button" class="event-add water-custom-btn" data-action="water-custom">✏️ 직접 입력 (ml)</button>'}
+      ${count ? '<div class="water-links"><button type="button" class="link-btn danger" data-action="water-undo">방금 것 취소</button></div>' : ''}
     </section>`;
 }
 
