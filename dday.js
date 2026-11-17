@@ -163,11 +163,18 @@ function handleDdaySubmit(event) {
   box.addEventListener('submit', handleDdaySubmit);
 });
 
-// 날짜가 바뀌었을 수 있으니 앱으로 돌아오면 다시 계산 (입력 중이면 그대로)
+// 앱으로 돌아오면: 날짜가 바뀌었을 수 있으니 다시 계산 (입력 중이면 그대로)
+// 3분 넘게 다른 앱에 있다 왔으면 '다시 켠 것'으로 보고 중요 정보 카드
+// (백업 공유 창·파일 선택 창에 잠깐 다녀온 건 제외)
+const REOPEN_MS = 3 * 60 * 1000;
+let hiddenAt = null;
+
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState !== 'visible') return;
+  if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return; }
   if (!clinicFormOpen) renderTopBar();
   if (!eventFormOpen) renderEvents();
+  if (hiddenAt && Date.now() - hiddenAt >= REOPEN_MS) showImportantCard();
+  hiddenAt = null;
 });
 
 // ===== 뒤로 가기 2번 종료 =====
@@ -184,8 +191,8 @@ function armBackGuard() {
 }
 ['pointerdown', 'keydown'].forEach((type) => document.addEventListener(type, armBackGuard, true));
 
-// 끄기 전에 꼭 확인할 것: 외래 오늘/내일, 재고 3일분 이하
-function exitReminders() {
+// 꼭 확인할 것: 외래 오늘/내일, 재고 3일분 이하
+function importantReminders() {
   const lines = [];
   if (ddayData.clinic) {
     const days = daysUntil(ddayData.clinic);
@@ -201,32 +208,18 @@ function exitReminders() {
   return lines;
 }
 
-function showExitNotice() {
+// 중요 정보 카드 (마감 할 일 + 외래·재고). 보여줄 게 없으면 false
+function showImportantCard(onExit = false) {
   const urgent = getUrgentTodos();
-  const reminders = exitReminders();
-  if (urgent.length === 0 && reminders.length === 0) { showToast(EXIT_HINT); return; }
-
-  fillDeadlineAlert(urgent);
-  if (urgent.length === 0) {
-    deadlineTitle.textContent = '끄기 전에 확인하세요';
-    document.querySelector('.deadline-sub').textContent = '';
+  const reminders = importantReminders();
+  if (urgent.length === 0 && reminders.length === 0) {
+    if (onExit) showToast(EXIT_HINT);
+    return false;
   }
-  if (reminders.length > 0) {
-    const heading = document.createElement('p');
-    heading.className = 'deadline-group-label due-over';
-    heading.textContent = '꼭 확인';
-    const ul = document.createElement('ul');
-    ul.className = 'deadline-list exit-list';
-    reminders.forEach((text) => {
-      const li = document.createElement('li');
-      li.textContent = text;
-      ul.appendChild(li);
-    });
-    deadlineGroups.prepend(heading, ul);
-  }
-  document.getElementById('deadline-hint').textContent = `${EXIT_HINT}
-바깥을 누르면 닫기`;
+  fillDeadlineAlert(urgent, reminders);
+  if (onExit) document.getElementById('deadline-hint').textContent = `${EXIT_HINT}\n바깥을 누르면 닫기`;
   deadlineAlert.classList.add('is-visible');
+  return true;
 }
 
 window.addEventListener('popstate', () => {
@@ -238,9 +231,10 @@ window.addEventListener('popstate', () => {
     showToast(EXIT_HINT);
     return;
   }
-  showExitNotice();
+  showImportantCard(true);
 });
 
 // ===== 시작 =====
 renderTopBar();
 renderEvents();
+showImportantCard(); // 켤 때마다

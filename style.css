@@ -371,6 +371,9 @@ body.is-dragging-page .drag-handle { cursor: grabbing; }
 
 .exit-list li { border-left-color: #e03131; font-weight: 600; } /* 끌 때 카드: 외래·재고 */
 #deadline-hint { white-space: pre-line; line-height: 1.6; }
+.deadline-side { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.deadline-dday { font-size: 13px; color: var(--primary); }
+.deadline-group-label.due-later { color: var(--text); font-weight: 700; }
 
 /* ===== 복약 탭 ===== */
 .med-card {

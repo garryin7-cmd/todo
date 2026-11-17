@@ -733,34 +733,50 @@ document.addEventListener('keydown', (event) => {
   document.getElementById('dose-alert').classList.remove('is-visible');
 });
 
-// ===== 마감 경고 카드 =====
-// 하루 두 번: 그날 처음 열 때 한 번, 밤(21시 이후) 처음 열 때 한 번
-// + 뒤로 가기로 앱을 끌 때 한 번 (dday.js의 '뒤로 가기 2번 종료')
-const DEADLINE_SHOWN_KEY = 'deadlineAlertShown'; // { date: 'YYYY-MM-DD', slots: ['day', 'night'] }
-const NIGHT_HOUR = 21;
+// ===== 중요 정보 카드 (마감 할 일 + 외래·재고) =====
+// 켤 때마다(3분 넘게 다른 앱에 있다 돌아와도) + 뒤로 가기로 끌 때마다 띄움 → dday.js의 showImportantCard()
+// 기한 지난 할 일은 카드에 넣지 않음 (할 일 목록의 'N일 지남'으로 확인)
+const URGENT_DAYS = 7;
 
-// 마감이 내일 이하(내일, 오늘, 지남)인 미완료 할 일 모으기
+// 마감이 오늘 ~ 7일 안인 미완료 할 일 (가까운 순)
 function getUrgentTodos() {
   return todos
-    .filter((todo) => !todo.done && todo.dueDate && daysUntil(todo.dueDate) <= 1)
-    .map((todo) => ({ todo, days: daysUntil(todo.dueDate) }));
+    .filter((todo) => !todo.done && todo.dueDate)
+    .map((todo) => ({ todo, days: daysUntil(todo.dueDate) }))
+    .filter((u) => u.days >= 0 && u.days <= URGENT_DAYS)
+    .sort((a, b) => a.days - b.days);
 }
 
-// 경고 카드 내용 채우기 (지남 / 오늘 / 내일 묶음)
-function fillDeadlineAlert(urgent) {
+// 카드 내용 채우기: 꼭 확인(외래·재고) → 오늘 → 내일 → 7일 안
+function fillDeadlineAlert(urgent, reminders = []) {
   const groups = [
-    { label: '기한 지남', level: 'over', items: urgent.filter((u) => u.days < 0) },
     { label: '오늘 마감', level: 'today', items: urgent.filter((u) => u.days === 0) },
     { label: '내일 마감', level: 'soon', items: urgent.filter((u) => u.days === 1) },
+    { label: '7일 안 마감', level: 'later', items: urgent.filter((u) => u.days >= 2) },
   ].filter((group) => group.items.length > 0);
 
   // 내일 마감만 있으면 요청하신 문구 그대로, 섞여 있으면 더 넓은 문구
   const onlyTomorrow = groups.length === 1 && groups[0].level === 'soon';
-  deadlineTitle.textContent = onlyTomorrow ? '마감일이 내일입니다' : '마감이 다가온 할 일이 있어요';
-  document.querySelector('.deadline-sub').textContent = '할 일은 다 하셨나요?';
+  if (groups.length === 0) deadlineTitle.textContent = '꼭 확인하세요';
+  else deadlineTitle.textContent = onlyTomorrow ? '마감일이 내일입니다' : '마감이 다가온 할 일이 있어요';
+  document.querySelector('.deadline-sub').textContent = groups.length > 0 ? '할 일은 다 하셨나요?' : '';
   document.getElementById('deadline-hint').textContent = '바깥을 누르거나 Esc를 눌러 닫기';
 
   deadlineGroups.innerHTML = '';
+  if (reminders.length > 0) {
+    const heading = document.createElement('p');
+    heading.className = 'deadline-group-label due-over';
+    heading.textContent = '꼭 확인';
+    const ul = document.createElement('ul');
+    ul.className = 'deadline-list exit-list';
+    reminders.forEach((text) => {
+      const li = document.createElement('li');
+      li.textContent = text;
+      ul.appendChild(li);
+    });
+    deadlineGroups.append(heading, ul);
+  }
+
   groups.forEach((group) => {
     const heading = document.createElement('p');
     heading.className = `deadline-group-label due-${group.level}`;
@@ -768,15 +784,24 @@ function fillDeadlineAlert(urgent) {
 
     const ul = document.createElement('ul');
     ul.className = 'deadline-list';
-    group.items.forEach(({ todo }) => {
+    group.items.forEach(({ todo, days }) => {
       const li = document.createElement('li');
       li.className = CATEGORY_CLASS[todo.category];
       const text = document.createElement('span');
       text.textContent = todo.text;
+      const side = document.createElement('span');
+      side.className = 'deadline-side';
+      if (days >= 2) {
+        const dday = document.createElement('b');
+        dday.className = 'deadline-dday';
+        dday.textContent = `D-${days}`;
+        side.appendChild(dday);
+      }
       const tag = document.createElement('span');
       tag.className = 'tag';
       tag.textContent = todo.category;
-      li.append(text, tag);
+      side.appendChild(tag);
+      li.append(text, side);
       ul.appendChild(li);
     });
     deadlineGroups.append(heading, ul);
@@ -801,30 +826,6 @@ function cleanupOverdueTodos() {
   }
 }
 
-// 지금 띄워야 하면 띄움 (이번 시간대에 이미 띄웠으면 건너뜀)
-function checkDeadlineAlert() {
-  const urgent = getUrgentTodos();
-  if (urgent.length === 0) return;
-
-  const now = new Date();
-  const today = todayString(now);
-  const slot = now.getHours() >= NIGHT_HOUR ? 'night' : 'day';
-
-  let shown = { date: today, slots: [] };
-  try {
-    const saved = JSON.parse(localStorage.getItem(DEADLINE_SHOWN_KEY));
-    if (saved && saved.date === today) shown = saved;
-  } catch (error) { /* 기록이 깨졌으면 새로 시작 */ }
-  if (shown.slots.includes(slot)) return;
-
-  // 밤에 처음 열었으면 낮 몫도 함께 본 것으로 침 (같은 날 두 번 연속 뜨지 않게)
-  shown.slots = slot === 'night' ? ['day', 'night'] : [...shown.slots, 'day'];
-  try { localStorage.setItem(DEADLINE_SHOWN_KEY, JSON.stringify(shown)); } catch (error) { /* 무시 */ }
-
-  fillDeadlineAlert(urgent);
-  deadlineAlert.classList.add('is-visible');
-}
-
 function closeDeadlineAlert() {
   deadlineAlert.classList.remove('is-visible');
 }
@@ -839,7 +840,6 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
     cleanupOverdueTodos();
     render(); // 날짜가 바뀌었으면 D-day도 새로 계산
-    checkDeadlineAlert();
   }
 });
 
@@ -882,7 +882,7 @@ cleanupOverdueTodos();
 render();
 const savedTab = localStorage.getItem(TAB_KEY);
 showTab(['todo', 'meds', 'health'].includes(savedTab) ? savedTab : 'todo');
-checkDeadlineAlert();
+// (켤 때 중요 정보 카드는 외래·재고까지 알아야 해서 dday.js에서 띄움)
 
 // 날짜·시각 칸: 작은 아이콘이 아니라 칸 아무 곳이나 눌러도 선택 창이 열리게
 document.addEventListener('click', (event) => {
