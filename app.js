@@ -473,20 +473,72 @@ list.addEventListener('click', (event) => {
 
 // ===== 드래그로 순서 바꾸기 =====
 // 마우스와 터치를 모두 처리하는 Pointer 이벤트 사용 (휴대폰에서도 동작)
+// - ⠿ 손잡이: 누르는 즉시 드래그
+// - 칸의 다른 곳: 마우스는 5px 이상 움직이면, 터치는 0.3초 꾹 누르면 드래그
+//   (터치로 바로 쓸어내리면 드래그가 아니라 평소처럼 스크롤)
 // 끄는 동안 항목을 화면에서 바로 옮기고, 손을 떼면 그 순서를 저장
-let draggingItem = null;
+const MOUSE_DRAG_DISTANCE = 5;   // 마우스: 이만큼(px) 움직이면 드래그 시작
+const LONG_PRESS_MS = 300;       // 터치: 이만큼(ms) 누르고 있으면 드래그 시작
+const TOUCH_SCROLL_DISTANCE = 10; // 터치: 그 전에 이만큼(px) 움직이면 스크롤로 보고 취소
+
+let draggingItem = null; // 지금 끌고 있는 항목
+let pending = null;      // 드래그가 시작될지 기다리는 중인 상태 { item, pointerId, x, y, type, timer }
+
+// 드래그 시작
+function startDrag(item, pointerId) {
+  draggingItem = item;
+  item.classList.add('is-dragging');
+  document.body.classList.add('is-dragging-page');
+  try {
+    item.setPointerCapture(pointerId); // 손가락/마우스가 칸 밖으로 나가도 계속 추적
+  } catch (error) { /* 이미 손을 뗀 경우 등은 무시 */ }
+  if (navigator.vibrate) navigator.vibrate(20); // 휴대폰이면 살짝 진동으로 시작을 알림
+}
+
+// 기다리던 상태 취소
+function clearPending() {
+  if (pending) clearTimeout(pending.timer);
+  pending = null;
+}
 
 list.addEventListener('pointerdown', (event) => {
-  const handle = event.target.closest('.drag-handle');
-  if (!handle || editingId !== null) return; // 손잡이가 아니거나 수정 중이면 무시
-  event.preventDefault();
-  draggingItem = handle.closest('.todo-item');
-  draggingItem.classList.add('is-dragging');
-  document.body.classList.add('is-dragging-page');
-  handle.setPointerCapture(event.pointerId); // 손가락/마우스가 손잡이 밖으로 나가도 계속 추적
+  if (editingId !== null || event.button > 0) return; // 수정 중이거나 마우스 오른쪽 버튼이면 무시
+  const item = event.target.closest('.todo-item');
+  if (!item) return;
+
+  // 손잡이는 바로 드래그
+  if (event.target.closest('.drag-handle')) {
+    event.preventDefault();
+    startDrag(item, event.pointerId);
+    return;
+  }
+
+  // 체크박스, 버튼에서는 드래그 시작 안 함 (원래 기능대로)
+  if (event.target.closest('input, button, select')) return;
+
+  pending = { item, pointerId: event.pointerId, x: event.clientX, y: event.clientY, type: event.pointerType };
+  if (event.pointerType !== 'mouse') {
+    pending.timer = setTimeout(() => {
+      const { item: pressedItem, pointerId } = pending;
+      pending = null;
+      startDrag(pressedItem, pointerId);
+    }, LONG_PRESS_MS);
+  }
 });
 
-list.addEventListener('pointermove', (event) => {
+document.addEventListener('pointermove', (event) => {
+  // 아직 드래그 시작 전: 시작할지/취소할지 판단
+  if (pending && event.pointerId === pending.pointerId) {
+    const distance = Math.hypot(event.clientX - pending.x, event.clientY - pending.y);
+    if (pending.type === 'mouse' && distance >= MOUSE_DRAG_DISTANCE) {
+      const { item, pointerId } = pending;
+      clearPending();
+      startDrag(item, pointerId);
+    } else if (pending.type !== 'mouse' && distance >= TOUCH_SCROLL_DISTANCE) {
+      clearPending(); // 꾹 누르기 전에 움직였으면 스크롤하려는 것
+    }
+  }
+
   if (!draggingItem) return;
 
   // 마우스 위치보다 아래에 중심이 있는 첫 항목 앞에 끼워 넣음 (없으면 맨 끝)
@@ -506,6 +558,7 @@ list.addEventListener('pointermove', (event) => {
 
 // 손을 떼면 바뀐 순서를 저장
 function endDrag() {
+  clearPending();
   if (!draggingItem) return;
   draggingItem.classList.remove('is-dragging');
   document.body.classList.remove('is-dragging-page');
@@ -513,8 +566,18 @@ function endDrag() {
   const newOrder = [...list.querySelectorAll('.todo-item')].map((item) => item.dataset.id);
   reorderVisible(newOrder);
 }
-list.addEventListener('pointerup', endDrag);
-list.addEventListener('pointercancel', endDrag);
+document.addEventListener('pointerup', endDrag);
+document.addEventListener('pointercancel', endDrag);
+
+// 휴대폰: 드래그 중에는 화면이 스크롤되지 않게 막음
+document.addEventListener('touchmove', (event) => {
+  if (draggingItem) event.preventDefault();
+}, { passive: false });
+
+// 휴대폰: 꾹 누를 때 뜨는 메뉴(복사/공유 등)가 드래그를 방해하지 않게 막음
+list.addEventListener('contextmenu', (event) => {
+  if (draggingItem || (pending && pending.type !== 'mouse')) event.preventDefault();
+});
 
 // 축하 카드 바깥(어두운 배경)을 클릭했을 때만 닫기 (카드 안을 누르면 그대로)
 celebration.addEventListener('click', (event) => {

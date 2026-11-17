@@ -171,12 +171,22 @@ button { font: inherit; cursor: pointer; }
 }
 .drag-handle:hover { color: var(--text); }
 
-/* 끌고 있는 항목 */
+/* 칸 아무 데나 끌 수 있으므로: 글자 선택, 휴대폰 꾹 누르기 메뉴 끄기 */
+.todo-item {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.todo-item.is-editing { user-select: auto; -webkit-user-select: auto; } /* 수정 중에는 글자 선택 가능 */
+
+/* 끌고 있는 항목: 살짝 떠오른 느낌 */
 .todo-item.is-dragging {
   position: relative;
   z-index: 1;
   border-color: var(--primary);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+  transform: scale(1.02);
 }
 /* 끄는 동안 글자가 선택되지 않게 */
 body.is-dragging-page { user-select: none; cursor: grabbing; }
