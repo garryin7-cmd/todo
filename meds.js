@@ -21,6 +21,7 @@ const medsView = document.getElementById('view-meds');
 let medData = loadMeds();
 let medEditingId = null;    // 수정 중인 약 id ('new'면 새 약 추가 중)
 let medRestockingId = null; // 재고 추가 입력 중인 약 id
+let medSelectedKey = null;  // 복약 카드에서 직접 고른 시간대 창 (null이면 자동)
 
 function loadMeds() {
   try {
@@ -121,6 +122,7 @@ function skipDose(s) {
 }
 
 function addRecord(record) {
+  medSelectedKey = null;
   medData.log.push(record);
   if (medData.log.length > MAX_LOG) medData.log = medData.log.slice(-MAX_LOG);
   saveMeds();
@@ -145,6 +147,7 @@ function undoLatest() {
     });
   }
   medData.log = medData.log.filter((r) => r !== record);
+  medSelectedKey = null;
   saveMeds();
   renderMeds();
   showToast(`${slotName(record)} 기록을 취소했어요`);
@@ -226,51 +229,53 @@ function compareHtml() {
       </div>`;
 }
 
-// 슬롯 하나의 상태 줄 (복용함 / 안 먹음 / 기록 없음)
-// isCurrent: 지금 시간대인지 / previous: 지금 시간대일 때 바로 앞 시간대
-function slotRowHtml(s, isCurrent, previous) {
+// 시간대 상태 아이콘 (✅ 복용 / ⏭ 안 먹음 / ⏳ 기록 없음)
+function slotIcon(s) {
   const record = findRecord(s);
-  const latest = latestRecord();
-  const undo = record && record === latest
-    ? '<button type="button" class="link-btn" data-action="undo">취소</button>' : '';
+  if (!record) return '⏳';
+  return record.status === 'taken' ? '✅' : '⏭';
+}
+
+// 선택한 시간대 창 내용
+// isCurrent: 지금 시간대인지 / previous: 바로 앞 시간대
+function slotPanelHtml(s, isCurrent, previous) {
+  const record = findRecord(s);
+  const undo = record && record === latestRecord()
+    ? '<button type="button" class="btn-small" data-action="undo">취소</button>' : '';
 
   if (record && record.status === 'taken') {
     const note = record.late ? ' (나중에 기록)' : '';
-    return `<div class="slot-row ok"><span>✅ <b>${slotName(s)}</b> ${timeText(record.time)} 복용${note}</span>${undo}</div>`;
+    return `<div class="slot-panel ok"><span>✅ ${timeText(record.time)} 복용${note}</span>${undo}</div>`;
   }
   if (record && record.status === 'skipped') {
-    return `<div class="slot-row skip"><span>⏭ <b>${slotName(s)}</b> 안 먹음으로 기록</span>${undo}</div>`;
+    return `<div class="slot-panel skip"><span>⏭ 안 먹음으로 기록</span>${undo}</div>`;
   }
-  if (isCurrent) {
-    // 앞 시간대도 기록이 없으면 경우의 수가 섞이니, 앞 시간대부터 정리하도록 안내
-    if (!findRecord(previous)) {
-      return `
-        <div class="slot-row wait">
-          <div>⏳ <b>${slotName(s)}</b> 아직 기록 없음</div>
-          <div class="wait-note">위의 ${slotName(previous)} 기록부터 정리해 주세요</div>
-        </div>`;
-    }
-    // 아래 큰 체크 버튼이 '먹었어요' 역할
+
+  // 지금 시간대인데 앞 시간대도 기록이 없으면, 앞 시간대부터 정리하도록 안내
+  if (isCurrent && !findRecord(previous)) {
     return `
-      <div class="slot-row wait">
-        <div>⏳ <b>${slotName(s)}</b> 아직 기록 없음 — 약판을 세어 보세요</div>
-        ${compareHtml()}
+      <div class="slot-panel wait">
+        <div>아직 기록 없음</div>
+        <button type="button" class="link-btn" data-action="select-slot" data-key="${slotKey(previous)}">
+          ${slotName(previous)} 기록부터 정리해 주세요 →
+        </button>
       </div>`;
   }
 
-  // 지난 슬롯인데 기록이 없음 → 먹었다면/안 먹었다면 개수를 둘 다 보여줌
+  const cls = isCurrent ? 'wait' : 'missing';
+  const icon = isCurrent ? '' : '⚠️ ';
   return `
-    <div class="slot-row missing">
-      <div>⚠️ <b>${slotName(s)}</b> 체크 기록 없음 — 약판을 세어 보세요</div>
+    <div class="slot-panel ${cls}">
+      <div>${icon}아직 기록 없음 — 약판을 세어 보세요</div>
       ${compareHtml()}
       <div class="row-actions">
-        <button type="button" class="btn-small btn-save" data-action="late-take" data-key="${slotKey(s)}">먹었어요</button>
-        <button type="button" class="btn-small" data-action="late-skip" data-key="${slotKey(s)}">안 먹었어요</button>
+        <button type="button" class="btn-small btn-save" data-action="record-take" data-key="${slotKey(s)}">먹었어요</button>
+        <button type="button" class="btn-small" data-action="record-skip" data-key="${slotKey(s)}">안 먹었어요</button>
       </div>
     </div>`;
 }
 
-// 핵심 카드: 지금 판에 있어야 할 알 수 + 직전/현재 슬롯 상태 + 복용 체크 버튼
+// 핵심 카드: 지금 판에 있어야 할 알 수 + [직전 | 지금] 시간대 전환 + 선택한 창
 function checkCardHtml() {
   const current = slotOf();
   const previous = prevSlot(current);
@@ -281,20 +286,25 @@ function checkCardHtml() {
       <span class="pill-sub">${m.sheetLeft === 0 ? '이 판 다 먹음 · 다음엔 새 판' : `한 판 ${m.sheetSize}알 중`}</span>
     </div>`).join('');
 
-  const done = findRecord(current);
-  const button = done
-    ? `<button type="button" class="btn-take" disabled>${slotName(current)} 약 기록 완료</button>`
-    : `<button type="button" class="btn-take" data-action="take">💊 ${slotName(current)} 약 복용 체크</button>`;
+  // 어느 창을 보여줄지: 직접 고른 창 → 없으면 (앞 시간대 기록 없음 ? 앞 : 지금)
+  const keys = [slotKey(previous), slotKey(current)];
+  if (!keys.includes(medSelectedKey)) medSelectedKey = null;
+  const selected = medSelectedKey === slotKey(previous) || (!medSelectedKey && !findRecord(previous))
+    ? previous : current;
 
+  const tabs = [previous, current].map((s) => {
+    const active = slotKey(s) === slotKey(selected) ? ' is-active' : '';
+    return `<button type="button" class="slot-tab${active}" data-action="select-slot" data-key="${slotKey(s)}">
+      ${slotIcon(s)} ${slotName(s)}</button>`;
+  }).join('');
+
+  const isCurrent = slotKey(selected) === slotKey(current);
   return `
     <section class="med-card">
       <h2 class="med-card-title">지금 판에 있어야 할 알 수</h2>
       <div class="pill-counts">${counts}</div>
-      <div class="slot-rows">
-        ${slotRowHtml(previous, false)}
-        ${slotRowHtml(current, true, previous)}
-      </div>
-      ${button}
+      <div class="slot-tabs">${tabs}</div>
+      ${slotPanelHtml(selected, isCurrent, previous)}
     </section>`;
 }
 
@@ -411,9 +421,12 @@ medsView.addEventListener('click', (event) => {
   if (!button) return;
   const { action, id, key } = button.dataset;
 
-  if (action === 'take') takeDose(slotOf());
-  else if (action === 'late-take') takeDose(slotFromKey(key), true);
-  else if (action === 'late-skip') skipDose(slotFromKey(key));
+  if (action === 'select-slot') { medSelectedKey = key; renderMeds(); }
+  else if (action === 'record-take') {
+    // 지금 시간대가 아닌 창에서 누르면 '나중에 기록'으로 표시
+    takeDose(slotFromKey(key), key !== slotKey(slotOf()));
+  }
+  else if (action === 'record-skip') skipDose(slotFromKey(key));
   else if (action === 'undo') undoLatest();
   else if (action === 'add') { medEditingId = 'new'; renderMeds(); }
   else if (action === 'edit') { medEditingId = id; medRestockingId = null; renderMeds(); }
@@ -432,7 +445,10 @@ medsView.addEventListener('submit', (event) => {
 
 // 앱으로 돌아올 때 시간대가 바뀌었을 수 있으니 다시 그림
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') renderMeds();
+  if (document.visibilityState === 'visible') {
+    medSelectedKey = null;
+    renderMeds();
+  }
 });
 
 // ===== 시작 =====

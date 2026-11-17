@@ -371,41 +371,49 @@ body.is-dragging-page .drag-handle { cursor: grabbing; }
 .pill-num small { font-size: 15px; font-weight: 600; margin-left: 2px; }
 .pill-sub { font-size: 12px; color: var(--text-sub); }
 
-/* 직전/현재 시간대 상태 줄 */
-.slot-rows { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
-.slot-row {
+/* [직전 | 지금] 시간대 전환 탭 */
+.slot-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.slot-tab {
+  padding: 10px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--text-sub);
+  font-size: 14px;
+}
+.slot-tab.is-active {
+  border: 2px solid var(--primary);
+  color: var(--text);
+  font-weight: 700;
+  background: #edf2ff;
+}
+
+/* 선택한 시간대 창 */
+.slot-panel {
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  background: var(--bg);
+}
+.slot-panel.ok, .slot-panel.skip {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  font-size: 14px;
-  background: var(--bg);
 }
-.slot-row.ok { background: #ebfbee; }
-.slot-row.skip { background: #f1f3f5; color: var(--text-sub); }
-.slot-row.missing { display: block; background: #fff4e6; border: 1px solid #ffc078; }
-.slot-row .compare { margin: 8px 0; padding-left: 4px; line-height: 1.8; }
-.slot-row.wait { display: block; }
-.slot-row.wait .compare { margin-bottom: 0; }
-.wait-note { margin-top: 4px; font-size: 13px; color: var(--text-sub); }
+.slot-panel.ok { background: #ebfbee; }
+.slot-panel.skip { background: #f1f3f5; color: var(--text-sub); }
+.slot-panel.missing { background: #fff4e6; border: 1px solid #ffc078; }
+.slot-panel .compare { margin: 8px 0; padding-left: 4px; line-height: 1.8; }
+.slot-panel .row-actions .btn-small { flex: 1; padding: 10px; font-size: 15px; } /* 먹었어요/안 먹었어요 크게 */
 .row-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
-.link-btn { border: none; background: none; color: var(--text-sub); text-decoration: underline; padding: 2px 4px; font-size: 13px; }
-
-/* 복용 체크 큰 버튼 */
-.btn-take {
-  width: 100%;
-  padding: 14px;
-  border: none;
-  border-radius: var(--radius);
-  background: var(--primary);
-  color: #fff;
-  font-size: 16px;
-  font-weight: 700;
-}
-.btn-take:disabled { background: #d0d5dd; color: #fff; cursor: default; }
+.link-btn { border: none; background: none; color: var(--primary); text-decoration: underline; padding: 6px 0 0; font-size: 14px; text-align: left; }
 
 /* 최근 7일, 내 약 */
 .med-section {
