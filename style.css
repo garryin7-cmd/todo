@@ -374,6 +374,9 @@ body.is-dragging-page .drag-handle { cursor: grabbing; }
 .deadline-side { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .deadline-dday { font-size: 13px; color: var(--primary); }
 .deadline-group-label.due-later { color: var(--text); font-weight: 700; }
+.event-card-list li { border-left-color: var(--primary); font-weight: 600; }
+.event-card-list li.is-today { border-left-color: #e03131; }
+.event-card-list li.is-today .deadline-dday { color: #e03131; }
 
 /* ===== 복약 탭 ===== */
 .med-card {

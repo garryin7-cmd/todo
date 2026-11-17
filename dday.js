@@ -208,15 +208,18 @@ function importantReminders() {
   return lines;
 }
 
-// 중요 정보 카드 (마감 할 일 + 외래·재고). 보여줄 게 없으면 false
+// 중요 정보 카드 (외래·재고 + 7일 안 중요 일정 + 마감 할 일). 보여줄 게 없으면 false
 function showImportantCard(onExit = false) {
   const urgent = getUrgentTodos();
   const reminders = importantReminders();
-  if (urgent.length === 0 && reminders.length === 0) {
+  const events = upcomingEvents()
+    .map((e) => ({ name: e.name, days: daysUntil(e.date) }))
+    .filter((e) => e.days <= URGENT_DAYS); // 할 일과 같이 7일 안만
+  if (urgent.length === 0 && reminders.length === 0 && events.length === 0) {
     if (onExit) showToast(EXIT_HINT);
     return false;
   }
-  fillDeadlineAlert(urgent, reminders);
+  fillDeadlineAlert(urgent, reminders, events);
   if (onExit) document.getElementById('deadline-hint').textContent = `${EXIT_HINT}\n바깥을 누르면 닫기`;
   deadlineAlert.classList.add('is-visible');
   return true;

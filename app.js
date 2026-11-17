@@ -747,8 +747,9 @@ function getUrgentTodos() {
     .sort((a, b) => a.days - b.days);
 }
 
-// 카드 내용 채우기: 꼭 확인(외래·재고) → 오늘 → 내일 → 7일 안
-function fillDeadlineAlert(urgent, reminders = []) {
+// 카드 내용 채우기: 꼭 확인(외래·재고) → 📌 중요 일정 → 오늘 → 내일 → 7일 안
+//   events: 7일 안 중요 일정 [{ name, days }] (dday.js에서 넘김)
+function fillDeadlineAlert(urgent, reminders = [], events = []) {
   const groups = [
     { label: '오늘 마감', level: 'today', items: urgent.filter((u) => u.days === 0) },
     { label: '내일 마감', level: 'soon', items: urgent.filter((u) => u.days === 1) },
@@ -772,6 +773,26 @@ function fillDeadlineAlert(urgent, reminders = []) {
     reminders.forEach((text) => {
       const li = document.createElement('li');
       li.textContent = text;
+      ul.appendChild(li);
+    });
+    deadlineGroups.append(heading, ul);
+  }
+
+  if (events.length > 0) {
+    const heading = document.createElement('p');
+    heading.className = 'deadline-group-label due-later';
+    heading.textContent = '📌 중요 일정';
+    const ul = document.createElement('ul');
+    ul.className = 'deadline-list event-card-list';
+    events.forEach(({ name, days }) => {
+      const li = document.createElement('li');
+      if (days === 0) li.classList.add('is-today');
+      const text = document.createElement('span');
+      text.textContent = name;
+      const dday = document.createElement('b');
+      dday.className = 'deadline-dday';
+      dday.textContent = days === 0 ? 'D-Day' : `D-${days}`;
+      li.append(text, dday);
       ul.appendChild(li);
     });
     deadlineGroups.append(heading, ul);
