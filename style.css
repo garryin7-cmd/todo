@@ -632,6 +632,65 @@ body.is-dragging-page .drag-handle { cursor: grabbing; }
   border-radius: var(--radius);
 }
 
+/* ===== 건강수첩 탭 ===== */
+/* 💧 수분 섭취 */
+.water-total { font-size: 40px; font-weight: 800; color: #1c7ed6; line-height: 1.2; }
+.water-total small { margin-left: 8px; font-size: 14px; font-weight: 500; color: var(--text-sub); }
+.water-goal { display: flex; align-items: center; gap: 10px; margin: 8px 0 4px; font-size: 13px; color: var(--text-sub); }
+.water-goal .bar { flex: 1; }
+.water-goal .bar-fill { background: #1c7ed6; }
+.water-goal .bar-fill.is-done { background: #2f9e44; }
+.water-btns { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px; margin-top: 12px; }
+.water-btn {
+  padding: 14px 0;
+  border: 1px solid #a5d8ff;
+  border-radius: var(--radius);
+  background: #e7f5ff;
+  color: #1864ab;
+  font-size: 17px;
+  font-weight: 700;
+}
+.water-btn:active { background: #d0ebff; }
+.water-form { display: flex; gap: 6px; margin-top: 10px; }
+.water-form input { flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid var(--primary); border-radius: 6px; font: inherit; }
+.water-links { display: flex; justify-content: space-between; }
+
+/* 기록 입력칸 */
+.btn-small.wide { width: 100%; padding: 10px; font-size: 15px; }
+.med-form .full { grid-column: 1 / -1; }
+.med-form textarea { padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font: inherit; color: var(--text); resize: vertical; }
+.med-form textarea:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
+.vital-help { margin: 0; font-size: 12px; color: var(--text-sub); }
+
+/* 기록 보기 */
+.hl-sub { margin: 18px 0 8px; font-size: 14px; }
+.hl-table th small { display: block; font-size: 11px; color: var(--text-sub); }
+.hl-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.hl-badge.lv0 { background: #ebfbee; color: #2b8a3e; }
+.hl-badge.lv1 { background: #fff9db; color: #e67700; }
+.hl-badge.lv2 { background: #fff4e6; color: #d9480f; }
+.hl-badge.lv3 { background: #fff5f5; color: #c92a2a; }
+.more-note { margin: 6px 0 0; font-size: 12px; color: var(--text-sub); text-align: center; }
+
+.wc-summary { margin: 0 0 6px; font-size: 14px; }
+.wc-summary b { font-size: 18px; }
+.wc-summary small { color: var(--text-sub); }
+.nowrap { white-space: nowrap; }
+.weight-chart { display: block; width: 100%; height: auto; }
+.wc-grid { stroke: var(--border); stroke-width: 1; }
+.wc-axis { fill: var(--text-sub); font-size: 11px; }
+.wc-line { fill: none; stroke: var(--primary); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.wc-dot { fill: var(--card); stroke: var(--primary); stroke-width: 2; }
+.wc-dot.last { fill: var(--primary); }
+.wc-val { fill: var(--text-sub); font-size: 11px; text-anchor: middle; }
+.wc-val.last { fill: var(--text); font-weight: 700; }
+
+.note-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.note-list li { padding: 8px 10px; background: var(--bg); border-radius: 8px; }
+.note-date { font-size: 12px; color: var(--text-sub); }
+.note-list p { margin: 2px 0 0; font-size: 14px; white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; }
+.manage-link { display: block; margin: -6px 0 16px; }
+
 /* ===== 토스트 알림 ===== */
 .toast {
   position: fixed;
@@ -730,7 +789,7 @@ body.is-dragging-page .drag-handle { cursor: grabbing; }
 
   /* 휴대폰에서 입력할 때 화면이 확대되지 않게 16px */
   .todo-input, .todo-category, .todo-due, .edit-input, .edit-category, .edit-due,
-  .med-form input, .restock-form input { font-size: 16px; }
+  .med-form input, .med-form textarea, .restock-form input, .water-form input { font-size: 16px; }
 
   .progress-categories { grid-template-columns: 1fr; gap: 8px; }
 
