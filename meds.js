@@ -6,7 +6,8 @@
 const MEDS_KEY = 'meds';
 const DAY_START_HOUR = 4;      // 04:00부터 '아침' (그 전 새벽은 전날 저녁으로 침)
 const EVENING_START_HOUR = 16; // 16:00부터 '저녁'
-const MAX_LOG = 120;           // 기록은 최근 120개(약 두 달)만 보관
+const MAX_LOG = 730;           // 기록은 최근 730개(아침+저녁 1년치)까지 보관
+const KEEP_SNAPSHOTS = 10;     // '취소'용 되돌릴 개수는 최근 10개 기록에만 남김 (용량 절약)
 const SLOT_LABEL = { morning: '아침', evening: '저녁' };
 
 const medsView = document.getElementById('view-meds');
@@ -22,6 +23,7 @@ let medData = loadMeds();
 let medEditingId = null;    // 수정 중인 약 id ('new'면 새 약 추가 중)
 let medRestockingId = null; // 재고 추가 입력 중인 약 id
 let medSelectedKey = null;  // 복약 카드에서 직접 고른 시간대 창 (null이면 자동)
+let medRange = '7d';        // 기록 보기 기간 (7d / 1m / 3m / 6m / 1y)
 
 function loadMeds() {
   try {
@@ -66,13 +68,28 @@ function prevSlot(s) {
   return { date: todayString(new Date(y, m - 1, d - 1)), slot: 'evening' };
 }
 
-// 'YYYY-MM-DD'를 오늘 기준으로 부르는 이름 (오늘/어제/11월 15일)
+// 날짜 하루 더하기/빼기 ('YYYY-MM-DD' → 'YYYY-MM-DD')
+function addDays(date, n) {
+  const [y, m, d] = date.split('-').map(Number);
+  return todayString(new Date(y, m - 1, d + n));
+}
+
+const WEEKDAY = ['일', '월', '화', '수', '목', '금', '토'];
+
+// 'M/D (요일)'
+function shortDate(date) {
+  const [y, m, d] = date.split('-').map(Number);
+  return `${m}/${d} (${WEEKDAY[new Date(y, m - 1, d).getDay()]})`;
+}
+
+// 'YYYY-MM-DD'를 실제 달력 오늘 기준으로 부르는 이름 (오늘/어제/11/15)
+// (새벽 1시에 보는 '전날 저녁 약'은 '어제 저녁'으로 보임)
 function dayName(date) {
-  const today = slotOf().date;
+  const today = todayString();
   if (date === today) return '오늘';
-  if (date === prevSlot({ date: today, slot: 'morning' }).date) return '어제';
+  if (date === addDays(today, -1)) return '어제';
   const [, m, d] = date.split('-').map(Number);
-  return `${m}월 ${d}일`;
+  return `${m}/${d}`;
 }
 
 function slotName(s) {
@@ -81,6 +98,23 @@ function slotName(s) {
 
 function findRecord(s) {
   return medData.log.find((r) => r.key === slotKey(s));
+}
+
+// 시간대 앞뒤 비교 (a가 앞이면 음수)
+function compareSlots(a, b) {
+  if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+  if (a.slot === b.slot) return 0;
+  return a.slot === 'morning' ? -1 : 1;
+}
+
+// 추적 시작 = 첫 기록을 남긴 시간대. 그 전은 '기록 없음(안 먹음)'으로 치지 않음
+function trackingStart() {
+  return medData.log.reduce((first, r) => (!first || compareSlots(r, first) < 0 ? r : first), null);
+}
+
+function isTracked(s) {
+  const start = trackingStart();
+  return Boolean(start) && compareSlots(s, start) >= 0;
 }
 
 function timeText(time) {
@@ -124,7 +158,10 @@ function skipDose(s) {
 function addRecord(record) {
   medSelectedKey = null;
   medData.log.push(record);
+  medData.log.sort((a, b) => a.time - b.time);
   if (medData.log.length > MAX_LOG) medData.log = medData.log.slice(-MAX_LOG);
+  // 오래된 기록의 되돌리기용 개수는 지워서 용량 절약 (최근 몇 개만 취소에 쓰임)
+  medData.log.slice(0, -KEEP_SNAPSHOTS).forEach((r) => { delete r.snapshot; });
   saveMeds();
   renderMeds();
 }
@@ -230,9 +267,9 @@ function compareHtml() {
 }
 
 // 시간대 상태 아이콘 (✅ 복용 / ❌ 안 먹음 / ⏳ 기록 없음)
-function slotIcon(s) {
+function slotIcon(s, isCurrent) {
   const record = findRecord(s);
-  if (!record) return '⏳';
+  if (!record) return isCurrent || isTracked(s) ? '⏳' : '·'; // 추적 시작 전은 점
   return record.status === 'taken' ? '✅' : '❌';
 }
 
@@ -252,7 +289,7 @@ function slotPanelHtml(s, isCurrent, previous) {
   }
 
   // 지금 시간대인데 앞 시간대도 기록이 없으면, 앞 시간대부터 정리하도록 안내
-  if (isCurrent && !findRecord(previous)) {
+  if (isCurrent && !findRecord(previous) && isTracked(previous)) {
     return `
       <div class="slot-panel wait">
         <div>아직 기록 없음</div>
@@ -262,8 +299,10 @@ function slotPanelHtml(s, isCurrent, previous) {
       </div>`;
   }
 
-  const cls = isCurrent ? 'wait' : 'missing';
-  const icon = isCurrent ? '' : '⚠️ ';
+  // 지난 시간대라도 추적 시작 전이면 경고 없이 (기록이 없다고 안 먹은 건 아니므로)
+  const warn = !isCurrent && isTracked(s);
+  const cls = warn ? 'missing' : 'wait';
+  const icon = warn ? '⚠️ ' : '';
   return `
     <div class="slot-panel ${cls}">
       <div>${icon}아직 기록 없음 — 약판을 세어 보세요</div>
@@ -289,13 +328,14 @@ function checkCardHtml() {
   // 어느 창을 보여줄지: 직접 고른 창 → 없으면 (앞 시간대 기록 없음 ? 앞 : 지금)
   const keys = [slotKey(previous), slotKey(current)];
   if (!keys.includes(medSelectedKey)) medSelectedKey = null;
-  const selected = medSelectedKey === slotKey(previous) || (!medSelectedKey && !findRecord(previous))
+  const selected = medSelectedKey === slotKey(previous)
+    || (!medSelectedKey && !findRecord(previous) && isTracked(previous))
     ? previous : current;
 
   const tabs = [previous, current].map((s) => {
     const active = slotKey(s) === slotKey(selected) ? ' is-active' : '';
     return `<button type="button" class="slot-tab${active}" data-action="select-slot" data-key="${slotKey(s)}">
-      ${slotIcon(s)} ${slotName(s)}</button>`;
+      ${slotIcon(s, slotKey(s) === slotKey(current))} ${slotName(s)}</button>`;
   }).join('');
 
   const isCurrent = slotKey(selected) === slotKey(current);
@@ -308,33 +348,231 @@ function checkCardHtml() {
     </section>`;
 }
 
-// 최근 7일 기록 표
+// ===== 기록 보기 (기간 버튼 + 복용률 + 빠진 복용 + 표/월별) =====
+const RANGES = [
+  { id: '7d', label: '7일', days: 7 },
+  { id: '1m', label: '1개월', days: 30 },
+  { id: '3m', label: '3개월', days: 90 },
+  { id: '6m', label: '6개월', days: 180 },
+  { id: '1y', label: '1년', days: 365 },
+];
+
+// 한 시간대의 상태: taken / skipped / missing(기록 없음) / waiting(지금 시간대, 아직) / none(추적 전·미래)
+function slotState(s, current) {
+  const record = findRecord(s);
+  if (record) return record.status;
+  const cmp = compareSlots(s, current);
+  if (cmp > 0 || !isTracked(s)) return 'none';
+  if (cmp === 0) return 'waiting';
+  return 'missing';
+}
+
+// 기간 안의 시간대 목록 (오늘부터 과거로, 최신순)
+function slotsInRange(days, current) {
+  const today = todayString();
+  const list = [];
+  for (let i = 0; i < days; i++) {
+    const date = addDays(today, -i);
+    list.push({ date, slot: 'evening' }, { date, slot: 'morning' });
+  }
+  return list.map((slot) => ({ ...slot, state: slotState(slot, current) }));
+}
+
+// 복용률 + 빠진 복용 (아직 시간이 남은 지금 시간대, 추적 전은 빼고 셈)
+function rangeStats(slots) {
+  const counted = slots.filter((x) => ['taken', 'skipped', 'missing'].includes(x.state));
+  const taken = counted.filter((x) => x.state === 'taken').length;
+  const missed = counted.filter((x) => x.state !== 'taken');
+  return { taken, total: counted.length, missed };
+}
+
+function rateText(taken, total) {
+  return total === 0 ? '—' : `${Math.round((taken / total) * 100)}%`;
+}
+
+// 표 칸 하나
+function cellHtml(x) {
+  if (x.state === 'taken') {
+    const record = findRecord(x);
+    return `<span class="mark ok">✅<small>${timeText(record.time)}</small></span>`;
+  }
+  if (x.state === 'skipped') return '<span class="mark skip">❌</span>';
+  if (x.state === 'missing') return '<span class="mark none" title="기록 없음">—</span>';
+  if (x.state === 'waiting') return '<span class="mark wait">⏳</span>';
+  return '';
+}
+
+// 날짜별 표 (7일, 1개월): 오늘이 맨 위, 추적 시작 전 날짜는 생략
+function dailyTableHtml(slots) {
+  const start = trackingStart();
+  const rows = [];
+  for (let i = 0; i < slots.length; i += 2) {
+    const evening = slots[i];
+    const morning = slots[i + 1];
+    if (start && evening.date < start.date && i > 0) break;
+    const name = dayName(evening.date);
+    const label = name === '오늘' || name === '어제' ? `${name} · ${shortDate(evening.date)}` : shortDate(evening.date);
+    rows.push(`<tr><th>${label}</th><td>${cellHtml(morning)}</td><td>${cellHtml(evening)}</td></tr>`);
+  }
+  return `<table class="history"><thead><tr><th></th><th>아침</th><th>저녁</th></tr></thead>
+    <tbody>${rows.join('')}</tbody></table>`;
+}
+
+// 월별 묶음 (3개월 이상): 최신 달이 맨 위
+function monthlyHtml(slots) {
+  const months = new Map();
+  slots.forEach((x) => {
+    const month = x.date.slice(0, 7);
+    if (!months.has(month)) months.set(month, []);
+    months.get(month).push(x);
+  });
+  const rows = [...months.entries()].map(([month, list]) => {
+    const st = rangeStats(list);
+    if (st.total === 0) return '';
+    const [y, m] = month.split('-').map(Number);
+    const pct = Math.round((st.taken / st.total) * 100);
+    return `
+      <li class="month-row">
+        <span class="month-name">${y}년 ${m}월</span>
+        <span class="month-bar"><span style="width:${pct}%"></span></span>
+        <span class="month-rate">${pct}% <small>(${st.taken}/${st.total})</small></span>
+      </li>`;
+  }).join('');
+  return rows ? `<ul class="month-list">${rows}</ul>` : '';
+}
+
+// 빠진 복용 목록 (최신순, 너무 많으면 일부만)
+function missedHtml(missed) {
+  if (missed.length === 0) return '<p class="missed-none">빠진 복용이 없어요 👏</p>';
+  const LIMIT = 15;
+  const items = missed.slice(0, LIMIT).map((x) => {
+    const what = x.state === 'skipped' ? '❌' : '—';
+    const why = x.state === 'skipped' ? '안 먹음' : '기록 없음';
+    return `<li><span class="${x.state === 'skipped' ? 'skip' : 'none'}">${what}</span> ${shortDate(x.date)} ${SLOT_LABEL[x.slot]} · ${why}</li>`;
+  }).join('');
+  const more = missed.length > LIMIT ? `<li class="more">외 ${missed.length - LIMIT}회</li>` : '';
+  return `
+    <p class="missed-title">빠진 복용 ${missed.length}회</p>
+    <ul class="missed-list">${items}${more}</ul>`;
+}
+
 function historyHtml() {
   const current = slotOf();
-  const rows = [];
-  let s = current.slot === 'evening' ? current : { date: current.date, slot: 'evening' };
-  for (let i = 0; i < 7; i++) {
-    const morning = { date: s.date, slot: 'morning' };
-    const evening = { date: s.date, slot: 'evening' };
-    rows.push(`<tr><th>${dayName(s.date)}</th><td>${markHtml(morning, current)}</td><td>${markHtml(evening, current)}</td></tr>`);
-    s = prevSlot(morning); // 전날 저녁
-  }
+  const range = RANGES.find((r) => r.id === medRange) || RANGES[0];
+  const slots = slotsInRange(range.days, current);
+  const st = rangeStats(slots);
+  const start = trackingStart();
+
+  const buttons = RANGES.map((r) => `
+    <button type="button" class="range-btn${r.id === range.id ? ' is-active' : ''}" data-action="range" data-range="${r.id}">${r.label}</button>`).join('');
+
+  const body = !start
+    ? '<p class="missed-none">첫 복용 기록부터 여기에 쌓여요</p>'
+    : `
+      <div class="rate-box">
+        <span class="rate-num">${rateText(st.taken, st.total)}</span>
+        <span class="rate-sub">복용률 · ${st.taken}/${st.total}회<br><small>${shortDate(start.date)}부터 기록 중</small></span>
+      </div>
+      ${missedHtml(st.missed)}
+      ${range.days <= 30 ? dailyTableHtml(slots) : monthlyHtml(slots)}`;
+
   return `
     <section class="med-section">
-      <h3>최근 7일</h3>
-      <table class="history"><thead><tr><th></th><th>아침</th><th>저녁</th></tr></thead>
-      <tbody>${rows.join('')}</tbody></table>
+      <h3>복약 기록</h3>
+      <div class="range-btns">${buttons}</div>
+      ${body}
     </section>`;
 }
 
-function markHtml(s, current) {
-  const record = findRecord(s);
-  if (record && record.status === 'taken') return `<span class="mark ok" title="${timeText(record.time)}">✅<small>${timeText(record.time)}</small></span>`;
-  if (record && record.status === 'skipped') return '<span class="mark skip">❌</span>';
-  const isFuture = s.date === current.date && s.slot === 'evening' && current.slot === 'morning';
-  if (isFuture) return '';
-  if (slotKey(s) === slotKey(current)) return '<span class="mark wait">⏳</span>';
-  return '<span class="mark none">—</span>';
+// ===== 백업 (할 일 · 복약 · 건강수첩 전체) =====
+const BACKUP_KEYS = ['todos', 'meds', 'health'];
+const LAST_BACKUP_KEY = 'lastBackupAt';
+const BACKUP_REMIND_DAYS = 14;
+
+function backupHtml() {
+  let last = null;
+  try { last = Number(localStorage.getItem(LAST_BACKUP_KEY)) || null; } catch (error) { /* 무시 */ }
+  const days = last ? Math.floor((Date.now() - last) / 86400000) : null;
+  let status;
+  if (days === null) status = '<span class="backup-warn">아직 백업한 적이 없어요</span>';
+  else if (days >= BACKUP_REMIND_DAYS) status = `<span class="backup-warn">백업한 지 ${days}일 됐어요</span>`;
+  else status = `마지막 백업: ${days === 0 ? '오늘' : `${days}일 전`}`;
+
+  return `
+    <section class="med-section">
+      <h3>데이터 백업</h3>
+      <p class="backup-help">할 일 · 복약 · 건강수첩 전체를 파일 하나로 저장해요. 카톡 나에게 보내기나 Google Drive에 보관해 두세요.</p>
+      <p class="backup-status">${status}</p>
+      <div class="row-actions">
+        <button type="button" class="btn-small btn-save" data-action="backup-save">백업 파일 저장</button>
+        <button type="button" class="btn-small" data-action="backup-load">백업 불러오기</button>
+      </div>
+      <input type="file" id="backup-file" accept=".json,.txt,application/json,text/plain" hidden>
+    </section>`;
+}
+
+// 백업 파일 만들기 → 공유 창(카톡/드라이브) → 안 되면 다운로드
+async function saveBackup() {
+  const data = {};
+  BACKUP_KEYS.forEach((key) => { data[key] = localStorage.getItem(key); });
+  const text = JSON.stringify({ app: 'harugyeol', version: 1, exportedAt: Date.now(), data });
+  const base = `harugyeol-backup-${todayString()}`;
+
+  // 휴대폰 공유 창은 파일 종류를 가려서, json이 안 되면 txt로 시도
+  const candidates = [
+    new File([text], `${base}.json`, { type: 'application/json' }),
+    new File([text], `${base}.txt`, { type: 'text/plain' }),
+  ];
+  const shareable = navigator.canShare && candidates.find((file) => navigator.canShare({ files: [file] }));
+
+  try {
+    if (shareable) {
+      await navigator.share({ files: [shareable], title: '하루결 백업' });
+    } else {
+      const url = URL.createObjectURL(candidates[0]);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = candidates[0].name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+    localStorage.setItem(LAST_BACKUP_KEY, String(Date.now()));
+    showToast('백업 파일을 저장했어요');
+    renderMeds();
+  } catch (error) {
+    if (error.name !== 'AbortError') { // 공유 창에서 그냥 닫은 경우는 조용히
+      console.error(error);
+      showToast('백업 저장에 실패했어요');
+    }
+  }
+}
+
+// 백업 파일 읽어서 덮어쓰기 (확인 후) → 새로고침해서 전체 반영
+function loadBackup(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    let backup;
+    try {
+      backup = JSON.parse(reader.result);
+    } catch (error) {
+      showToast('백업 파일을 읽을 수 없어요');
+      return;
+    }
+    if (!backup || backup.app !== 'harugyeol' || !backup.data) {
+      showToast('하루결 백업 파일이 아니에요');
+      return;
+    }
+    const when = new Date(backup.exportedAt).toLocaleString('ko-KR');
+    if (!confirm(`${when}에 만든 백업으로 지금 데이터를 모두 바꿀까요?\n(지금 데이터는 사라져요)`)) return;
+    BACKUP_KEYS.forEach((key) => {
+      const value = backup.data[key];
+      if (typeof value === 'string') localStorage.setItem(key, value);
+      else localStorage.removeItem(key);
+    });
+    localStorage.setItem(LAST_BACKUP_KEY, String(backup.exportedAt || Date.now()));
+    location.reload();
+  };
+  reader.readAsText(file);
 }
 
 // 약 목록 (재고, 수정, 삭제)
@@ -404,10 +642,10 @@ function renderMeds() {
         <h2 class="med-card-title">먼저 먹는 약을 등록해 주세요</h2>
         <p class="med-help">약 이름과 개수는 이 휴대폰에만 저장돼요.<br>지금 약판에 남은 알 수를 세어서 넣어 주세요.</p>
         ${medFormHtml(null)}
-      </section>`;
+      </section>${backupHtml()}`;
     return;
   }
-  medsView.innerHTML = checkCardHtml() + historyHtml() + medListHtml();
+  medsView.innerHTML = checkCardHtml() + historyHtml() + medListHtml() + backupHtml();
 }
 
 // ===== 이벤트 (한 곳에서 처리) =====
@@ -422,6 +660,9 @@ medsView.addEventListener('click', (event) => {
   const { action, id, key } = button.dataset;
 
   if (action === 'select-slot') { medSelectedKey = key; renderMeds(); }
+  else if (action === 'range') { medRange = button.dataset.range; renderMeds(); }
+  else if (action === 'backup-save') saveBackup();
+  else if (action === 'backup-load') document.getElementById('backup-file').click();
   else if (action === 'record-take') {
     // 지금 시간대가 아닌 창에서 누르면 '나중에 기록'으로 표시
     takeDose(slotFromKey(key), key !== slotKey(slotOf()));
@@ -434,6 +675,13 @@ medsView.addEventListener('click', (event) => {
   else if (action === 'delete') deleteMed(id);
   else if (action === 'restock') { medRestockingId = id; renderMeds(); medsView.querySelector('.restock-form input')?.focus(); }
   else if (action === 'restock-cancel') { medRestockingId = null; renderMeds(); }
+});
+
+// 백업 파일을 고르면 불러오기
+medsView.addEventListener('change', (event) => {
+  if (event.target.id !== 'backup-file' || !event.target.files[0]) return;
+  loadBackup(event.target.files[0]);
+  event.target.value = '';
 });
 
 medsView.addEventListener('submit', (event) => {

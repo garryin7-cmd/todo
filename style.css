@@ -474,6 +474,41 @@ body.is-dragging-page .drag-handle { cursor: grabbing; }
 .restock-form { flex-basis: 100%; display: flex; gap: 6px; }
 .restock-form input { flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid var(--primary); border-radius: 6px; font: inherit; }
 
+/* 기록 보기: 기간 버튼, 복용률, 빠진 복용, 월별 */
+.range-btns { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-bottom: 12px; }
+.range-btn {
+  padding: 8px 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--text-sub);
+  font-size: 13px;
+}
+.range-btn.is-active { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+
+.rate-box { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.rate-num { font-size: 32px; font-weight: 800; color: var(--primary); }
+.rate-sub { font-size: 14px; line-height: 1.4; }
+.rate-sub small { color: var(--text-sub); }
+
+.missed-title { margin: 0 0 6px; font-size: 13px; font-weight: 700; color: #c92a2a; }
+.missed-none { margin: 0 0 10px; font-size: 14px; color: var(--text-sub); }
+.missed-list { list-style: none; margin: 0 0 14px; padding: 8px 10px; background: #fff5f5; border-radius: 8px; font-size: 13px; line-height: 1.8; }
+.missed-list .none { color: #e03131; font-weight: 700; }
+.missed-list .more { color: var(--text-sub); }
+
+.month-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.month-row { display: grid; grid-template-columns: 92px 1fr 92px; align-items: center; gap: 8px; font-size: 14px; }
+.month-bar { height: 10px; background: var(--border); border-radius: 999px; overflow: hidden; }
+.month-bar span { display: block; height: 100%; background: var(--primary); border-radius: 999px; }
+.month-rate { text-align: right; font-weight: 600; }
+.month-rate small { color: var(--text-sub); font-weight: 400; }
+
+/* 백업 */
+.backup-help { margin: 0 0 6px; font-size: 13px; color: var(--text-sub); line-height: 1.5; }
+.backup-status { margin: 0 0 10px; font-size: 13px; }
+.backup-warn { color: #e03131; font-weight: 600; }
+
 /* 약 등록/수정 입력칸 */
 .med-form { flex-basis: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .med-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--text-sub); }
