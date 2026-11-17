@@ -4,13 +4,16 @@
 // app.js에 있는 todayString(), showToast()를 같이 사용함 (index.html에서 app.js 다음에 불러옴)
 
 const MEDS_KEY = 'meds';
-const DAY_START_HOUR = 4;      // 04:00부터 '아침' (그 전 새벽은 전날 저녁으로 침)
-const EVENING_START_HOUR = 16; // 16:00부터 '저녁'
+const DAY_START_HOUR = 5;      // 05:00부터 '아침' (그 전 새벽은 전날 저녁으로 침) = 저녁 약 마감
+const EVENING_START_HOUR = 17; // 17:00부터 '저녁' = 아침 약 마감
+// 의료진 안내: 약을 잊었으면 최대한 빨리 먹되, 마감이 지나면 그 약은 건너뜀
+//              아침 약을 두 번 먹었으면 그날 저녁 약은 건너뜀
 const MAX_LOG = 730;           // 기록은 최근 730개(아침+저녁 1년치)까지 보관
 const KEEP_SNAPSHOTS = 10;     // '취소'용 되돌릴 개수는 최근 10개 기록에만 남김 (용량 절약)
 const SLOT_LABEL = { morning: '아침', evening: '저녁' };
 const TARGET_HOUR = { morning: 10, evening: 22 }; // 복용 목표 시각 (고정)
 const ON_TIME_MS = 2 * 60 * 1000;                 // 목표 시각 ~ +1분 59초까지 '제시간'
+const CUTOFF_TEXT = { morning: `${EVENING_START_HOUR}:00`, evening: `다음 날 ${String(DAY_START_HOUR).padStart(2, '0')}:00` };
 
 const medsView = document.getElementById('view-meds');
 
@@ -258,10 +261,50 @@ function editDoseTime(s, time) {
 }
 
 // 안 먹음: 개수는 그대로 두고 기록만
-function skipDose(s) {
+// reason: 'cutoff'(마감 지나 건너뜀) / 'double'(아침 두 번 복용으로 저녁 건너뜀) / 없음(그냥 안 먹음)
+function skipDose(s, reason) {
   if (findRecord(s)) return;
-  addRecord({ ...s, key: slotKey(s), status: 'skipped', time: Date.now(), recordedAt: Date.now() });
-  showToast(`${slotName(s)} 약은 안 먹은 것으로 기록했어요`);
+  const record = { ...s, key: slotKey(s), status: 'skipped', time: Date.now(), recordedAt: Date.now() };
+  if (reason) record.reason = reason;
+  addRecord(record);
+  showToast(reason ? `${slotName(s)} 약은 건너뜀으로 기록했어요` : `${slotName(s)} 약은 안 먹은 것으로 기록했어요`);
+}
+
+// 아침 약을 한 번 더 먹음: 판/재고에서 한 번 더 빼고, 그날 저녁은 건너뛰도록 안내
+function markDouble(s) {
+  const record = findRecord(s);
+  if (!record || record.status !== 'taken' || record.doubled || s.slot !== 'morning') return;
+  if (!confirm(`${slotName(s)} 약을 정말 한 번 더 드셨나요?\n(판 개수가 한 번 더 줄어요)`)) return;
+  const snapshot = {};
+  medData.meds.forEach((med) => {
+    snapshot[med.id] = { sheetLeft: med.sheetLeft, stock: med.stock };
+    med.sheetLeft = sheetAfterDose(med);
+    med.stock = Math.max(0, med.stock - med.dose);
+  });
+  record.doubled = { time: Date.now(), snapshot };
+  saveMeds();
+  renderMeds();
+  showDoseCard('stop', '⚠️', `${slotName(s)} 약을 두 번 드셨어요`, `${dayName(s.date)} 저녁 약은 드시면 안 돼요 (의료진 안내)`);
+}
+
+// 두 번 복용 기록 취소 (잘못 누른 경우): 개수 되돌림
+function undoDouble(s) {
+  const record = findRecord(s);
+  if (!record || !record.doubled) return;
+  medData.meds.forEach((med) => {
+    const before = record.doubled.snapshot && record.doubled.snapshot[med.id];
+    if (before) {
+      med.sheetLeft = before.sheetLeft;
+      med.stock = before.stock;
+    }
+  });
+  delete record.doubled;
+  // 두 번 복용 때문에 남긴 '저녁 건너뜀' 기록도 함께 지움 (저녁을 다시 기록할 수 있게)
+  const eveningKey = slotKey({ date: s.date, slot: 'evening' });
+  medData.log = medData.log.filter((r) => !(r.key === eveningKey && r.reason === 'double'));
+  saveMeds();
+  renderMeds();
+  showToast('두 번 복용 기록을 취소했어요');
 }
 
 function addRecord(record) {
@@ -381,7 +424,8 @@ function compareHtml() {
 function slotIcon(s, isCurrent) {
   const record = findRecord(s);
   if (!record) return isCurrent || isTracked(s) ? '⏳' : '·'; // 추적 시작 전은 점
-  return record.status === 'taken' ? '✅' : '❌';
+  if (record.status === 'taken') return record.doubled ? '⚠️' : '✅';
+  return { cutoff: '⛔', double: '⏸' }[record.reason] || '❌';
 }
 
 // 선택한 시간대 창 내용
@@ -390,8 +434,9 @@ function slotPanelHtml(s, isCurrent, previous) {
   const record = findRecord(s);
   const undo = record && record === latestRecord()
     ? '<button type="button" class="btn-small" data-action="undo">취소</button>' : '';
-
   const formOpen = medTimeForm && medTimeForm.key === slotKey(s);
+  const morningOfDay = findRecord({ date: s.date, slot: 'morning' });
+  const morningDoubled = s.slot === 'evening' && morningOfDay && morningOfDay.doubled;
 
   if (record && record.status === 'taken') {
     // 나중에 체크한 기록은 실제 먹은 시각을 모르니 판정 대신 안내
@@ -399,20 +444,47 @@ function slotPanelHtml(s, isCurrent, previous) {
       ? '<span class="timing unknown">먹은 시각 모름</span>'
       : `<span class="timing ${doseTiming(s, record.time).kind}">${timingLabel(s, record.time)}</span>`;
     const note = record.manual ? ' <small>(직접 입력)</small>' : '';
+    // 아침 약 두 번 복용: 표시 + 취소 / 아직이면 [한 번 더 먹었어요]
+    let doubleLine = '';
+    let doubleBtn = '';
+    if (s.slot === 'morning' && record.doubled) {
+      doubleLine = `<div class="double-line">⚠️ ${timeText(record.doubled.time)}에 한 번 더 복용 → ${dayName(s.date)} 저녁 약은 드시면 안 돼요 (의료진 안내)</div>`;
+      doubleBtn = `<button type="button" class="link-btn" data-action="double-undo" data-key="${slotKey(s)}">두 번 복용 기록 취소</button>`;
+    } else if (s.slot === 'morning') {
+      doubleBtn = `<button type="button" class="link-btn danger" data-action="double" data-key="${slotKey(s)}">한 번 더 먹었어요</button>`;
+    }
     const edit = formOpen
       ? timeFormHtml(s, 'edit', hhmm(record.time))
       : `<div class="row-actions">
           <button type="button" class="btn-small" data-action="time-form" data-mode="edit" data-key="${slotKey(s)}">시각 수정</button>
           ${undo}
-        </div>`;
+        </div>
+        ${doubleBtn}`;
     return `
-      <div class="slot-panel ok">
+      <div class="slot-panel ${record.doubled ? 'double' : 'ok'}">
         <div class="taken-line">✅ ${timeText(record.time)} 복용${note} ${judge}</div>
+        ${doubleLine}
         ${edit}
       </div>`;
   }
   if (record && record.status === 'skipped') {
-    return `<div class="slot-panel skip"><span>❌ 안 먹음으로 기록</span>${undo}</div>`;
+    const label = {
+      cutoff: `⛔ 마감(${CUTOFF_TEXT[s.slot]})이 지나 건너뜀`,
+      double: '⏸ 아침 약 두 번 복용으로 건너뜀 (의료진 안내)',
+    }[record.reason] || '❌ 안 먹음으로 기록';
+    return `<div class="slot-panel skip"><span>${label}</span>${undo}</div>`;
+  }
+
+  // 아침 약을 두 번 먹은 날의 저녁: 먹으면 안 됨 → [먹었어요] 숨기고 건너뜀 기록만
+  if (morningDoubled) {
+    return `
+      <div class="slot-panel stop">
+        <div class="stop-title">⛔ ${dayName(s.date)} 아침 약을 두 번 드셨어요</div>
+        <div>${dayName(s.date)} 저녁 약은 드시면 안 돼요 (의료진 안내)</div>
+        <div class="row-actions">
+          <button type="button" class="btn-small btn-stop" data-action="record-skip" data-key="${slotKey(s)}" data-reason="double">저녁 건너뜀으로 기록</button>
+        </div>
+      </div>`;
   }
 
   // 지금 시간대인데 앞 시간대도 기록이 없으면, 앞 시간대부터 정리하도록 안내
@@ -426,20 +498,38 @@ function slotPanelHtml(s, isCurrent, previous) {
       </div>`;
   }
 
-  // 지난 시간대라도 추적 시작 전이면 경고 없이 (기록이 없다고 안 먹은 건 아니므로)
-  const warn = !isCurrent && isTracked(s);
+  // 지난 시간대 = 마감이 지난 시간대 (추적 시작 전이면 경고 없이)
+  const pastCutoff = !isCurrent;
+  const warn = pastCutoff && isTracked(s);
   const cls = warn ? 'missing' : 'wait';
   const icon = warn ? '⚠️ ' : '';
+
+  // 안내: 마감 지남 → 건너뛰기 / 목표 시각 지났는데 아직 → 지금 바로
+  let guide = '';
+  if (pastCutoff) {
+    guide = `<div class="guide stop">⛔ 아직 안 드셨다면, 마감(${CUTOFF_TEXT[s.slot]})이 지났으니 이 약은 건너뛰세요 (의료진 안내)</div>`;
+  } else if (Date.now() >= targetTime(s) + ON_TIME_MS) {
+    guide = `<div class="guide hurry">🕐 아직 안 드셨다면 지금 바로 드세요 (마감 ${CUTOFF_TEXT[s.slot]})</div>`;
+  }
+
+  // 마감이 지난 시간대: 먹었으면 실제 시각을 넣게 하고, 아니면 건너뜀 기록
+  const buttons = pastCutoff
+    ? `<div class="row-actions">
+        <button type="button" class="btn-small btn-save" data-action="time-form" data-mode="new" data-key="${slotKey(s)}">먹었어요 (시각 입력)</button>
+        <button type="button" class="btn-small" data-action="record-skip" data-key="${slotKey(s)}" data-reason="cutoff">건너뜀으로 기록</button>
+      </div>`
+    : `<div class="row-actions">
+        <button type="button" class="btn-small btn-save" data-action="record-take" data-key="${slotKey(s)}">먹었어요</button>
+        <button type="button" class="btn-small" data-action="record-skip" data-key="${slotKey(s)}">안 먹었어요</button>
+      </div>
+      <button type="button" class="link-btn" data-action="time-form" data-mode="new" data-key="${slotKey(s)}">다른 시간에 먹었어요</button>`;
+
   return `
     <div class="slot-panel ${cls}">
       <div>${icon}아직 기록 없음 — 약판을 세어 보세요</div>
       ${compareHtml()}
-      ${formOpen ? timeFormHtml(s, 'new', `${String(TARGET_HOUR[s.slot]).padStart(2, '0')}:00`) : `
-      <div class="row-actions">
-        <button type="button" class="btn-small btn-save" data-action="record-take" data-key="${slotKey(s)}">먹었어요</button>
-        <button type="button" class="btn-small" data-action="record-skip" data-key="${slotKey(s)}">안 먹었어요</button>
-      </div>
-      <button type="button" class="link-btn" data-action="time-form" data-mode="new" data-key="${slotKey(s)}">다른 시간에 먹었어요</button>`}
+      ${guide}
+      ${formOpen ? timeFormHtml(s, 'new', `${String(TARGET_HOUR[s.slot]).padStart(2, '0')}:00`) : buttons}
     </div>`;
 }
 
@@ -500,10 +590,16 @@ const RANGES = [
   { id: '1y', label: '1년', days: 365 },
 ];
 
-// 한 시간대의 상태: taken / skipped / missing(기록 없음) / waiting(지금 시간대, 아직) / none(추적 전·미래)
+// 한 시간대의 상태: taken / double(두 번 복용) / skipped(안 먹음) / cutoff(마감 지나 건너뜀)
+//   / excused(지시대로 건너뜀) / missing(기록 없음) / waiting(지금 시간대, 아직) / none(추적 전·미래)
 function slotState(s, current) {
   const record = findRecord(s);
-  if (record) return record.status;
+  if (record && record.status === 'taken') return record.doubled ? 'double' : 'taken';
+  if (record && record.status === 'skipped') {
+    if (record.reason === 'cutoff') return 'cutoff'; // 잊어서 마감 지남 → 빠진 복용으로 셈
+    if (record.reason === 'double') return 'excused'; // 지시대로 건너뜀 → 복용률 계산에서 뺌
+    return 'skipped';
+  }
   const cmp = compareSlots(s, current);
   if (cmp > 0 || !isTracked(s)) return 'none';
   if (cmp === 0) return 'waiting';
@@ -523,10 +619,11 @@ function slotsInRange(days, current) {
 
 // 복용률 + 빠진 복용 (아직 시간이 남은 지금 시간대, 추적 전은 빼고 셈)
 function rangeStats(slots) {
-  const counted = slots.filter((x) => ['taken', 'skipped', 'missing'].includes(x.state));
-  const taken = counted.filter((x) => x.state === 'taken').length;
-  const missed = counted.filter((x) => x.state !== 'taken');
-  return { taken, total: counted.length, missed };
+  const counted = slots.filter((x) => ['taken', 'double', 'skipped', 'cutoff', 'missing'].includes(x.state));
+  const taken = counted.filter((x) => x.state === 'taken' || x.state === 'double').length;
+  const missed = counted.filter((x) => ['skipped', 'cutoff', 'missing'].includes(x.state));
+  const doubles = slots.filter((x) => x.state === 'double');
+  return { taken, total: counted.length, missed, doubles };
 }
 
 function rateText(taken, total) {
@@ -539,7 +636,13 @@ function cellHtml(x) {
     const record = findRecord(x);
     return `<span class="mark ok">✅<small>${timeText(record.time)}</small></span>`;
   }
+  if (x.state === 'double') {
+    const record = findRecord(x);
+    return `<span class="mark double" title="두 번 복용">⚠️<small>2회 · ${timeText(record.time)}</small></span>`;
+  }
   if (x.state === 'skipped') return '<span class="mark skip">❌</span>';
+  if (x.state === 'cutoff') return '<span class="mark cutoff" title="마감 지나 건너뜀">⛔</span>';
+  if (x.state === 'excused') return '<span class="mark excused" title="지시대로 건너뜀">⏸</span>';
   if (x.state === 'missing') return '<span class="mark none" title="기록 없음">—</span>';
   if (x.state === 'waiting') return '<span class="mark wait">⏳</span>';
   return '';
@@ -585,17 +688,25 @@ function monthlyHtml(slots) {
 }
 
 // 빠진 복용 목록 (최신순, 너무 많으면 일부만)
-function missedHtml(missed) {
-  if (missed.length === 0) return '<p class="missed-none">빠진 복용이 없어요 👏</p>';
+function missedHtml(missed, doubles) {
+  const LABEL = {
+    skipped: ['❌', '안 먹음', 'skip'],
+    cutoff: ['⛔', '마감 지나 건너뜀', 'none'],
+    missing: ['—', '기록 없음', 'none'],
+    double: ['⚠️', '두 번 복용', 'double'],
+  };
+  // 빠진 복용 + 두 번 복용을 날짜 최신순으로 함께
+  const all = [...missed, ...doubles].sort((a, b) => -compareSlots(a, b));
+  if (all.length === 0) return '<p class="missed-none">빠진 복용이 없어요 👏</p>';
   const LIMIT = 15;
-  const items = missed.slice(0, LIMIT).map((x) => {
-    const what = x.state === 'skipped' ? '❌' : '—';
-    const why = x.state === 'skipped' ? '안 먹음' : '기록 없음';
-    return `<li><span class="${x.state === 'skipped' ? 'skip' : 'none'}">${what}</span> ${shortDate(x.date)} ${SLOT_LABEL[x.slot]} · ${why}</li>`;
+  const items = all.slice(0, LIMIT).map((x) => {
+    const [what, why, cls] = LABEL[x.state];
+    return `<li><span class="${cls}">${what}</span> ${shortDate(x.date)} ${SLOT_LABEL[x.slot]} · ${why}</li>`;
   }).join('');
-  const more = missed.length > LIMIT ? `<li class="more">외 ${missed.length - LIMIT}회</li>` : '';
+  const more = all.length > LIMIT ? `<li class="more">외 ${all.length - LIMIT}건</li>` : '';
+  const title = [`빠진 복용 ${missed.length}회`, doubles.length ? `두 번 복용 ${doubles.length}회` : ''].filter(Boolean).join(' · ');
   return `
-    <p class="missed-title">빠진 복용 ${missed.length}회</p>
+    <p class="missed-title">${title}</p>
     <ul class="missed-list">${items}${more}</ul>`;
 }
 
@@ -616,7 +727,7 @@ function historyHtml() {
         <span class="rate-num">${rateText(st.taken, st.total)}</span>
         <span class="rate-sub">복용률 · ${st.taken}/${st.total}회<br><small>${shortDate(start.date)}부터 기록 중</small></span>
       </div>
-      ${missedHtml(st.missed)}
+      ${missedHtml(st.missed, st.doubles)}
       ${range.days <= 30 ? dailyTableHtml(slots) : monthlyHtml(slots)}`;
 
   return `
@@ -823,7 +934,9 @@ medsView.addEventListener('click', (event) => {
   }
   else if (action === 'time-form') { medTimeForm = { key, mode: button.dataset.mode }; renderMeds(); medsView.querySelector('.time-form input')?.focus(); }
   else if (action === 'time-cancel') { medTimeForm = null; renderMeds(); }
-  else if (action === 'record-skip') skipDose(slotFromKey(key));
+  else if (action === 'record-skip') skipDose(slotFromKey(key), button.dataset.reason);
+  else if (action === 'double') markDouble(slotFromKey(key));
+  else if (action === 'double-undo') undoDouble(slotFromKey(key));
   else if (action === 'undo') undoLatest();
   else if (action === 'add') { medEditingId = 'new'; renderMeds(); }
   else if (action === 'edit') { medEditingId = id; medRestockingId = null; renderMeds(); }

@@ -561,6 +561,21 @@ body.is-dragging-page .drag-handle { cursor: grabbing; }
 .timing.early { background: #d0ebff; color: #1864ab; }
 .timing.unknown { background: #f1f3f5; color: var(--text-sub); font-weight: 500; }
 
+/* 놓친 약 안내, 두 번 복용 */
+.guide { margin: 8px 0; padding: 8px 10px; border-radius: 8px; font-size: 14px; font-weight: 600; line-height: 1.5; word-break: keep-all; }
+.guide.hurry { background: #fff3bf; color: #e67700; }
+.guide.stop { background: #ffe3e3; color: #c92a2a; }
+.slot-panel.double { background: #fff4e6; border: 1px solid #ffa94d; }
+.slot-panel.stop { background: #ffe3e3; border: 2px solid #e03131; line-height: 1.6; }
+.stop-title { font-weight: 800; color: #c92a2a; font-size: 15px; }
+.double-line { margin: 0 0 8px; color: #d9480f; font-weight: 600; font-size: 13px; word-break: keep-all; }
+.btn-stop { background: #e03131; border-color: #e03131; color: #fff; }
+.link-btn.danger { color: #e03131; }
+.dose-card.dose-stop { border-color: #e03131; }
+.mark.double small { color: #d9480f; }
+.mark.excused { color: var(--text-sub); }
+.missed-list .double { font-weight: 700; }
+
 /* 먹은 시각 입력 */
 .time-form { margin-top: 8px; }
 .time-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--text-sub); margin-bottom: 6px; }
