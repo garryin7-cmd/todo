@@ -597,9 +597,33 @@ list.addEventListener('keydown', (event) => {
   else if (event.key === 'Escape') cancelEdit();
 });
 
+// ===== 하단 탭 (할 일 / 복약 / 건강수첩) =====
+const TAB_KEY = 'activeTab'; // 마지막으로 본 탭을 기억 (다시 열면 그 탭부터)
+const tabBar = document.getElementById('tab-bar');
+
+// 탭 전환: 해당 화면만 보이고, 탭 버튼 강조
+function showTab(name) {
+  document.querySelectorAll('.view').forEach((view) => {
+    view.hidden = view.dataset.view !== name;
+  });
+  tabBar.querySelectorAll('.tab').forEach((tab) => {
+    const active = tab.dataset.tab === name;
+    tab.classList.toggle('is-active', active);
+    tab.setAttribute('aria-selected', active);
+  });
+  try { localStorage.setItem(TAB_KEY, name); } catch (error) { /* 저장 실패해도 탭 전환은 됨 */ }
+}
+
+tabBar.addEventListener('click', (event) => {
+  const tab = event.target.closest('.tab');
+  if (tab) showTab(tab.dataset.tab);
+});
+
 // ===== 시작 =====
 showToday();
 render();
+const savedTab = localStorage.getItem(TAB_KEY);
+showTab(['todo', 'meds', 'health'].includes(savedTab) ? savedTab : 'todo');
 
 // PWA: 서비스 워커 등록 (오프라인 실행 + 앱 설치 가능하게)
 // 내 컴퓨터에서 index.html을 더블클릭해 열 때(file://)는 지원 안 되므로 건너뜀

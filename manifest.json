@@ -1,7 +1,7 @@
 {
-  "name": "할 일 관리",
-  "short_name": "할 일",
-  "description": "하루 할 일을 카테고리별로 관리하는 개인용 앱",
+  "name": "하루결",
+  "short_name": "하루결",
+  "description": "할 일, 복약, 건강수첩을 한곳에서 챙기는 개인용 앱",
   "lang": "ko",
   "start_url": "./",
   "scope": "./",

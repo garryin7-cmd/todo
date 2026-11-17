@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>할 일 관리</title>
+  <title>하루결</title>
   <link rel="stylesheet" href="style.css">
 
   <!-- PWA: 앱 설치 정보, 아이콘, 상단 바 색 -->
@@ -12,16 +12,19 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="할 일">
+  <meta name="apple-mobile-web-app-title" content="하루결">
 </head>
 <body>
   <main class="app">
 
-    <!-- 1. 제목 -->
+    <!-- 제목 (모든 탭 공통) -->
     <header class="app-header">
-      <h1>할 일 관리</h1>
+      <h1>하루결</h1>
       <p class="today" id="today"></p>
     </header>
+
+    <!-- ===== 탭 1: 할 일 ===== -->
+    <section class="view" id="view-todo" data-view="todo">
 
     <!-- 2. 입력 영역 -->
     <form class="todo-form" id="todo-form">
@@ -70,7 +73,32 @@
     <!-- 5. 할 일 목록 (app.js의 render()가 채움. 비어 있으면 안내 문구도 이 안에 그림) -->
     <ul class="todo-list" id="todo-list"></ul>
 
+    </section>
+
+    <!-- ===== 탭 2: 복약 (다음 단계에서 채움) ===== -->
+    <section class="view" id="view-meds" data-view="meds" hidden>
+      <div class="placeholder">💊<br>복약 기능은 곧 추가돼요</div>
+    </section>
+
+    <!-- ===== 탭 3: 건강수첩 (그다음 단계에서 채움) ===== -->
+    <section class="view" id="view-health" data-view="health" hidden>
+      <div class="placeholder">📒<br>건강수첩은 곧 추가돼요</div>
+    </section>
+
   </main>
+
+  <!-- 하단 탭 바 -->
+  <nav class="tab-bar" id="tab-bar" role="tablist">
+    <button type="button" class="tab" role="tab" data-tab="todo">
+      <span class="tab-icon">✓</span><span>할 일</span>
+    </button>
+    <button type="button" class="tab" role="tab" data-tab="meds">
+      <span class="tab-icon">💊</span><span>복약</span>
+    </button>
+    <button type="button" class="tab" role="tab" data-tab="health">
+      <span class="tab-icon">📒</span><span>건강수첩</span>
+    </button>
+  </nav>
 
   <!-- 토스트 알림 (추가/삭제/완료 시 2초간 표시) -->
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
