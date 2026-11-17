@@ -771,7 +771,10 @@ async function saveBackup() {
   BACKUP_KEYS.forEach((key) => { data[key] = localStorage.getItem(key); });
   // app: 'harugyeol'은 옛 이름이지만, 예전 백업 파일과 호환되게 그대로 둠
   const text = JSON.stringify({ app: 'harugyeol', version: 1, exportedAt: Date.now(), data });
-  const base = `harugyeol-backup-${todayString()}`;
+  // 파일 이름: back_up_날짜_시각 (예: back_up_20261118_2130) → 이름순 정렬이 곧 시간순
+  const now = new Date();
+  const stamp = `${todayString(now).replace(/-/g, '')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+  const base = `back_up_${stamp}`;
 
   // 휴대폰 공유 창은 파일 종류를 가려서, json이 안 되면 txt로 시도
   const candidates = [
