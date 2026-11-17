@@ -8,6 +8,10 @@ const CATEGORIES = ['업무', '개인', '공부'];
 const form = document.getElementById('todo-form');
 const input = document.getElementById('todo-input');
 const categorySelect = document.getElementById('todo-category');
+const dueInput = document.getElementById('todo-due');
+const deadlineAlert = document.getElementById('deadline-alert');
+const deadlineTitle = document.getElementById('deadline-title');
+const deadlineGroups = document.getElementById('deadline-groups');
 const list = document.getElementById('todo-list');
 const toast = document.getElementById('toast');
 const confettiCanvas = document.getElementById('confetti');
@@ -45,8 +49,9 @@ const totalBar = document.getElementById('progress-total-bar');
 const categoryProgressItems = document.querySelectorAll('.progress-categories li');
 
 // ===== 데이터 =====
-// 할 일 하나: { id, text, category, done, createdAt, completedAt }
+// 할 일 하나: { id, text, category, done, createdAt, completedAt, dueDate }
 // completedAt: 완료 체크한 시각 (미완료이거나 기록 없으면 null/없음)
+// dueDate: 마감일 'YYYY-MM-DD' 문자열 (없으면 null/없음)
 let todos = loadTodos();
 let editingId = null; // 지금 수정 중인 할 일의 id (없으면 null)
 let currentFilter = '전체'; // 화면에 보여줄 카테고리 (저장하지 않음, 표시용)
@@ -72,8 +77,34 @@ function findTodo(id) {
   return todos.find((todo) => todo.id === id);
 }
 
+// ===== 날짜 도우미 =====
+// 오늘 날짜를 'YYYY-MM-DD'로 (내 휴대폰 시간대 기준)
+function todayString(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+// 마감일까지 남은 날 수 (내일=1, 오늘=0, 어제=-1)
+function daysUntil(dueDate) {
+  const [y, m, d] = dueDate.split('-').map(Number);
+  const now = new Date();
+  const due = Date.UTC(y, m - 1, d);
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((due - today) / 86400000);
+}
+
+// 남은 날 수 → 표시 글자와 색 종류
+function dueLabel(days) {
+  if (days < 0) return { text: `${-days}일 지남`, level: 'over' };
+  if (days === 0) return { text: 'D-day · 오늘', level: 'today' };
+  if (days === 1) return { text: 'D-1 · 내일', level: 'soon' };
+  return { text: `D-${days}`, level: 'later' };
+}
+
 // 새 할 일을 만들어 목록에 넣고 저장
-function addTodo(text, category) {
+function addTodo(text, category, dueDate) {
   const todo = {
     id: Date.now().toString(),
     text: text,
@@ -81,6 +112,7 @@ function addTodo(text, category) {
     done: false,
     createdAt: Date.now(),
     completedAt: null,
+    dueDate: dueDate || null,
   };
   todos.push(todo);
   saveTodos();
@@ -103,12 +135,13 @@ function toggleTodo(id) {
   else showToast(todo.done ? '완료했어요' : '완료를 취소했어요');
 }
 
-// 글자와 카테고리를 바꾸고 저장
-function updateTodo(id, text, category) {
+// 글자, 카테고리, 마감일을 바꾸고 저장
+function updateTodo(id, text, category, dueDate) {
   const todo = findTodo(id);
   if (!todo) return;
   todo.text = text;
   todo.category = category;
+  todo.dueDate = dueDate || null;
   editingId = null;
   saveTodos();
   render();
@@ -294,16 +327,28 @@ function createTodoElement(todo) {
   title.className = 'todo-title';
   title.textContent = todo.text; // textContent를 써야 입력한 글자가 HTML로 해석되지 않음
 
-  // 글자 + (완료 시각) 을 세로로 묶는 칸
+  // 글자 + 아랫줄(마감 D-day, 완료 시각)을 세로로 묶는 칸
   const body = document.createElement('div');
   body.className = 'todo-body';
   body.appendChild(title);
+
+  const meta = document.createElement('div');
+  meta.className = 'todo-meta';
+  if (todo.dueDate) {
+    const label = dueLabel(daysUntil(todo.dueDate));
+    const due = document.createElement('small');
+    due.className = `due due-${label.level}`;
+    due.textContent = `⏰ ${label.text}`;
+    due.title = `마감일: ${todo.dueDate}`;
+    meta.appendChild(due);
+  }
   if (todo.done && todo.completedAt) {
     const time = document.createElement('small');
     time.className = 'todo-time';
     time.textContent = formatCompletedTime(todo.completedAt);
-    body.appendChild(time);
+    meta.appendChild(time);
   }
+  if (meta.children.length > 0) body.appendChild(meta);
 
   const tag = document.createElement('span');
   tag.className = 'tag';
@@ -347,8 +392,15 @@ function createEditElement(todo) {
     select.appendChild(option);
   });
 
+  const dateInput = document.createElement('input');
+  dateInput.type = 'date';
+  dateInput.className = 'edit-due';
+  dateInput.value = todo.dueDate || '';
+  dateInput.title = '마감일 (비우면 없음)';
+
   li.append(
     textInput,
+    dateInput,
     select,
     createButton('btn-small btn-save', '저장'),
     createButton('btn-small btn-cancel', '취소'),
@@ -426,11 +478,12 @@ function showToday() {
 function submitEdit(li) {
   const text = li.querySelector('.edit-input').value.trim();
   const category = li.querySelector('.edit-category').value;
+  const dueDate = li.querySelector('.edit-due').value;
   if (text === '') {
     li.querySelector('.edit-input').focus();
     return;
   }
-  updateTodo(li.dataset.id, text, category);
+  updateTodo(li.dataset.id, text, category, dueDate);
 }
 
 // ===== 이벤트 =====
@@ -442,8 +495,9 @@ form.addEventListener('submit', (event) => {
     input.focus();
     return; // 빈 칸이면 추가하지 않음
   }
-  addTodo(text, categorySelect.value);
+  addTodo(text, categorySelect.value, dueInput.value);
   input.value = '';
+  dueInput.value = '';
   input.focus();
 });
 
@@ -584,9 +638,100 @@ celebration.addEventListener('click', (event) => {
   if (event.target === celebration) closeCelebration();
 });
 
-// Esc 키로도 축하 카드 닫기
+// Esc 키로도 축하 카드 / 마감 경고 카드 닫기
 document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && celebration.classList.contains('is-visible')) closeCelebration();
+  if (event.key !== 'Escape') return;
+  if (celebration.classList.contains('is-visible')) closeCelebration();
+  if (deadlineAlert.classList.contains('is-visible')) closeDeadlineAlert();
+});
+
+// ===== 마감 경고 카드 =====
+// 하루 두 번: 그날 처음 열 때 한 번, 밤(21시 이후) 처음 열 때 한 번
+// (브라우저는 앱을 "닫는 순간"에 화면을 띄울 수 없어서, 하루 마무리 시간대로 대신함)
+const DEADLINE_SHOWN_KEY = 'deadlineAlertShown'; // { date: 'YYYY-MM-DD', slots: ['day', 'night'] }
+const NIGHT_HOUR = 21;
+
+// 마감이 내일 이하(내일, 오늘, 지남)인 미완료 할 일 모으기
+function getUrgentTodos() {
+  return todos
+    .filter((todo) => !todo.done && todo.dueDate && daysUntil(todo.dueDate) <= 1)
+    .map((todo) => ({ todo, days: daysUntil(todo.dueDate) }));
+}
+
+// 경고 카드 내용 채우기 (지남 / 오늘 / 내일 묶음)
+function fillDeadlineAlert(urgent) {
+  const groups = [
+    { label: '기한 지남', level: 'over', items: urgent.filter((u) => u.days < 0) },
+    { label: '오늘 마감', level: 'today', items: urgent.filter((u) => u.days === 0) },
+    { label: '내일 마감', level: 'soon', items: urgent.filter((u) => u.days === 1) },
+  ].filter((group) => group.items.length > 0);
+
+  // 내일 마감만 있으면 요청하신 문구 그대로, 섞여 있으면 더 넓은 문구
+  const onlyTomorrow = groups.length === 1 && groups[0].level === 'soon';
+  deadlineTitle.textContent = onlyTomorrow ? '마감일이 내일입니다' : '마감이 다가온 할 일이 있어요';
+
+  deadlineGroups.innerHTML = '';
+  groups.forEach((group) => {
+    const heading = document.createElement('p');
+    heading.className = `deadline-group-label due-${group.level}`;
+    heading.textContent = `${group.label} ${group.items.length}개`;
+
+    const ul = document.createElement('ul');
+    ul.className = 'deadline-list';
+    group.items.forEach(({ todo }) => {
+      const li = document.createElement('li');
+      li.className = CATEGORY_CLASS[todo.category];
+      const text = document.createElement('span');
+      text.textContent = todo.text;
+      const tag = document.createElement('span');
+      tag.className = 'tag';
+      tag.textContent = todo.category;
+      li.append(text, tag);
+      ul.appendChild(li);
+    });
+    deadlineGroups.append(heading, ul);
+  });
+}
+
+// 지금 띄워야 하면 띄움 (이번 시간대에 이미 띄웠으면 건너뜀)
+function checkDeadlineAlert() {
+  const urgent = getUrgentTodos();
+  if (urgent.length === 0) return;
+
+  const now = new Date();
+  const today = todayString(now);
+  const slot = now.getHours() >= NIGHT_HOUR ? 'night' : 'day';
+
+  let shown = { date: today, slots: [] };
+  try {
+    const saved = JSON.parse(localStorage.getItem(DEADLINE_SHOWN_KEY));
+    if (saved && saved.date === today) shown = saved;
+  } catch (error) { /* 기록이 깨졌으면 새로 시작 */ }
+  if (shown.slots.includes(slot)) return;
+
+  // 밤에 처음 열었으면 낮 몫도 함께 본 것으로 침 (같은 날 두 번 연속 뜨지 않게)
+  shown.slots = slot === 'night' ? ['day', 'night'] : [...shown.slots, 'day'];
+  try { localStorage.setItem(DEADLINE_SHOWN_KEY, JSON.stringify(shown)); } catch (error) { /* 무시 */ }
+
+  fillDeadlineAlert(urgent);
+  deadlineAlert.classList.add('is-visible');
+}
+
+function closeDeadlineAlert() {
+  deadlineAlert.classList.remove('is-visible');
+}
+
+// 카드 바깥 클릭 → 닫기
+deadlineAlert.addEventListener('click', (event) => {
+  if (event.target === deadlineAlert) closeDeadlineAlert();
+});
+
+// 설치한 앱은 껐다 켜지 않고 다시 화면으로 돌아오는 경우가 많아서, 돌아올 때도 확인
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    render(); // 날짜가 바뀌었으면 D-day도 새로 계산
+    checkDeadlineAlert();
+  }
 });
 
 // 수정 중 Enter → 저장, Esc → 취소
@@ -624,6 +769,7 @@ showToday();
 render();
 const savedTab = localStorage.getItem(TAB_KEY);
 showTab(['todo', 'meds', 'health'].includes(savedTab) ? savedTab : 'todo');
+checkDeadlineAlert();
 
 // PWA: 서비스 워커 등록 (오프라인 실행 + 앱 설치 가능하게)
 // 내 컴퓨터에서 index.html을 더블클릭해 열 때(file://)는 지원 안 되므로 건너뜀

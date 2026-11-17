@@ -70,7 +70,15 @@ button { font: inherit; cursor: pointer; }
   color: #fff;
   font-weight: 600;
 }
-.todo-input:focus, .todo-category:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
+.todo-due {
+  padding: 9px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font: inherit;
+  background: var(--card);
+  color: var(--text);
+}
+.todo-input:focus, .todo-category:focus, .todo-due:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
 
 /* ===== 3. 진행률 영역 ===== */
 .progress {
@@ -201,6 +209,15 @@ body.is-dragging-page .drag-handle { cursor: grabbing; }
 .todo-title { overflow-wrap: anywhere; }
 .todo-time { font-size: 12px; color: var(--text-sub); }
 
+/* 할 일 아랫줄: 마감 D-day + 완료 시각 */
+.todo-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.due { font-size: 12px; font-weight: 600; }
+.due-later { color: var(--text-sub); font-weight: 400; }
+.due-soon  { color: #e8590c; }   /* 내일: 주황 */
+.due-today { color: #e03131; }   /* 오늘: 빨강 */
+.due-over  { color: #c92a2a; font-weight: 700; } /* 지남: 진한 빨강 */
+.todo-item.is-done .due { color: var(--text-sub); font-weight: 400; } /* 완료하면 흐리게 */
+
 /* 카테고리 태그 */
 .tag {
   font-size: 12px;
@@ -243,6 +260,14 @@ body.is-dragging-page .drag-handle { cursor: grabbing; }
   border-radius: 6px;
   font: inherit;
 }
+.edit-due {
+  padding: 5px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  background: var(--card);
+  color: var(--text);
+}
 .edit-category {
   padding: 6px;
   border: 1px solid var(--border);
@@ -269,6 +294,54 @@ body.is-dragging-page .drag-handle { cursor: grabbing; }
   padding: 40px 16px;
   border: 2px dashed var(--border);
   border-radius: var(--radius);
+}
+
+/* ===== 마감 경고 카드 (빨간 테두리) ===== */
+.deadline-alert {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 10;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s, visibility 0.25s;
+}
+.deadline-alert.is-visible { opacity: 1; visibility: visible; }
+.deadline-card {
+  width: 100%;
+  max-width: 400px;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: var(--card);
+  border: 3px solid #e03131;
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(224, 49, 49, 0.25);
+  transform: scale(0.9);
+  transition: transform 0.25s;
+}
+.deadline-alert.is-visible .deadline-card { transform: scale(1); }
+.deadline-emoji { font-size: 40px; line-height: 1; }
+.deadline-title { margin: 10px 0 4px; font-size: 19px; color: #c92a2a; }
+.deadline-sub { margin: 0 0 16px; color: var(--text-sub); }
+.deadline-groups { text-align: left; }
+.deadline-group-label { margin: 12px 0 6px; font-size: 13px; font-weight: 700; }
+.deadline-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.deadline-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--cat-color, var(--border));
+  border-radius: 8px;
+  overflow-wrap: anywhere;
 }
 
 /* ===== 하단 탭 바 ===== */
@@ -409,10 +482,11 @@ body.is-dragging-page .drag-handle { cursor: grabbing; }
   /* 입력창은 한 줄 전체, 카테고리와 추가 버튼은 그 아래 */
   .todo-form { flex-wrap: wrap; }
   .todo-input { flex-basis: 100%; }
+  .todo-due { flex: 1.4; min-width: 0; }
   .todo-category { flex: 1; }
 
   /* 휴대폰에서 입력할 때 화면이 확대되지 않게 16px */
-  .todo-input, .todo-category, .edit-input, .edit-category { font-size: 16px; }
+  .todo-input, .todo-category, .todo-due, .edit-input, .edit-category, .edit-due { font-size: 16px; }
 
   .progress-categories { grid-template-columns: 1fr; gap: 8px; }
 

@@ -29,6 +29,7 @@
     <!-- 2. 입력 영역 -->
     <form class="todo-form" id="todo-form">
       <input type="text" id="todo-input" class="todo-input" placeholder="할 일을 입력하세요" autocomplete="off">
+      <input type="date" id="todo-due" class="todo-due" title="마감일 (비워 두면 없음)">
       <select id="todo-category" class="todo-category">
         <option value="업무">업무</option>
         <option value="개인">개인</option>
@@ -86,6 +87,17 @@
     </section>
 
   </main>
+
+  <!-- 마감 경고 카드 (빨간 테두리, 바깥 클릭/Esc로 닫기) -->
+  <div class="overlay deadline-alert" id="deadline-alert" role="alertdialog" aria-labelledby="deadline-title">
+    <div class="deadline-card">
+      <div class="deadline-emoji">⏰</div>
+      <h2 class="deadline-title" id="deadline-title"></h2>
+      <p class="deadline-sub">할 일은 다 하셨나요?</p>
+      <div class="deadline-groups" id="deadline-groups"></div>
+      <small class="celebration-hint">바깥을 누르거나 Esc를 눌러 닫기</small>
+    </div>
+  </div>
 
   <!-- 하단 탭 바 -->
   <nav class="tab-bar" id="tab-bar" role="tablist">
