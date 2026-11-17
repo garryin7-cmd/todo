@@ -7,10 +7,13 @@
   --border: #e3e5e8;
   --primary: #3b5bdb;
 
-  /* 카테고리 색상 */
+  /* 카테고리 색상 (진한 색 / 옅은 배경색) */
   --cat-work: #e8590c;      /* 업무: 주황 */
+  --cat-work-bg: #fff4e6;
   --cat-personal: #2f9e44;  /* 개인: 초록 */
+  --cat-personal-bg: #ebfbee;
   --cat-study: #1c7ed6;     /* 공부: 파랑 */
+  --cat-study-bg: #e7f5ff;
 
   --radius: 10px;
 }
@@ -126,10 +129,13 @@ button { font: inherit; cursor: pointer; }
   color: var(--text-sub);
 }
 .filter.is-active {
-  background: var(--text);
-  border-color: var(--text);
+  background: var(--cat-color, var(--text));
+  border-color: var(--cat-color, var(--text));
   color: #fff;
 }
+/* 카테고리 탭은 선택 안 됐을 때도 글자색으로 구분 */
+.filter.cat-work, .filter.cat-personal, .filter.cat-study { color: var(--cat-color); }
+.filter.is-active.cat-work, .filter.is-active.cat-personal, .filter.is-active.cat-study { color: #fff; }
 
 /* ===== 5. 할 일 목록 ===== */
 .todo-list {
@@ -167,12 +173,13 @@ button { font: inherit; cursor: pointer; }
   padding: 2px 8px;
   border-radius: 999px;
   color: var(--cat-color);
+  background: var(--cat-bg);
   border: 1px solid var(--cat-color);
   flex-shrink: 0;
 }
-.cat-work     { --cat-color: var(--cat-work); }
-.cat-personal { --cat-color: var(--cat-personal); }
-.cat-study    { --cat-color: var(--cat-study); }
+.cat-work     { --cat-color: var(--cat-work);     --cat-bg: var(--cat-work-bg); }
+.cat-personal { --cat-color: var(--cat-personal); --cat-bg: var(--cat-personal-bg); }
+.cat-study    { --cat-color: var(--cat-study);    --cat-bg: var(--cat-study-bg); }
 
 /* 수정, 삭제 버튼 */
 .btn-icon {
@@ -221,17 +228,59 @@ button { font: inherit; cursor: pointer; }
   color: #fff;
 }
 
-/* 할 일이 없을 때 */
-.empty {
+/* 할 일이 없을 때 (목록 자리에 고정 표시) */
+.empty-state {
   text-align: center;
   color: var(--text-sub);
-  padding: 32px 0;
+  padding: 40px 16px;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+/* ===== 토스트 알림 ===== */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  transform: translate(-50%, 20px);
+  max-width: calc(100% - 32px);
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: var(--text);
+  color: #fff;
+  font-size: 14px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+}
+.toast.is-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
 }
 
 /* ===== 좁은 화면 (휴대폰) ===== */
 @media (max-width: 480px) {
+  .app { padding-top: 20px; }
+  .app-header h1 { font-size: 22px; }
+
+  /* 입력창은 한 줄 전체, 카테고리와 추가 버튼은 그 아래 */
   .todo-form { flex-wrap: wrap; }
   .todo-input { flex-basis: 100%; }
   .todo-category { flex: 1; }
-  .progress-categories { grid-template-columns: 1fr; }
+
+  /* 휴대폰에서 입력할 때 화면이 확대되지 않게 16px */
+  .todo-input, .todo-category, .edit-input, .edit-category { font-size: 16px; }
+
+  .progress-categories { grid-template-columns: 1fr; gap: 8px; }
+
+  /* 필터 탭 4개를 같은 너비로 */
+  .filter { flex: 1; padding: 8px 0; }
+
+  /* 할 일 항목: 버튼을 손가락으로 누르기 쉽게 */
+  .todo-item { gap: 8px; padding: 10px; }
+  .btn-icon { padding: 8px; }
+
+  /* 수정 모드: 입력창 한 줄, 카테고리·저장·취소는 그 아래 */
+  .edit-input { flex-basis: 100%; }
+  .edit-category { flex: 1; }
 }

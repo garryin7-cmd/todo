@@ -9,7 +9,7 @@ const form = document.getElementById('todo-form');
 const input = document.getElementById('todo-input');
 const categorySelect = document.getElementById('todo-category');
 const list = document.getElementById('todo-list');
-const emptyMessage = document.getElementById('empty');
+const toast = document.getElementById('toast');
 const todayText = document.getElementById('today');
 const filterBar = document.getElementById('filters');
 const totalText = document.getElementById('progress-total-text');
@@ -57,6 +57,7 @@ function addTodo(text, category) {
   todos.push(todo);
   saveTodos();
   render();
+  showToast('추가됐어요');
 }
 
 // 완료/미완료를 뒤집고 저장 (완료하면 그 시각을 기록, 풀면 지움)
@@ -67,6 +68,7 @@ function toggleTodo(id) {
   todo.completedAt = todo.done ? Date.now() : null;
   saveTodos();
   render();
+  showToast(todo.done ? '완료했어요' : '완료를 취소했어요');
 }
 
 // 글자와 카테고리를 바꾸고 저장
@@ -88,6 +90,16 @@ function deleteTodo(id) {
   todos = todos.filter((item) => item.id !== id);
   saveTodos();
   render();
+  showToast('삭제됐어요');
+}
+
+// 화면 아래에 알림을 2초간 띄웠다가 숨김
+let toastTimer = null;
+function showToast(message) {
+  toast.textContent = message;
+  toast.classList.add('is-visible');
+  clearTimeout(toastTimer); // 연속으로 누르면 이전 타이머는 취소하고 2초를 다시 셈
+  toastTimer = setTimeout(() => toast.classList.remove('is-visible'), 2000);
 }
 
 // 수정 모드 시작 / 취소
@@ -240,13 +252,15 @@ function render() {
     list.appendChild(element);
   });
 
-  // 비어 있을 때 안내 문구
-  if (todos.length === 0) {
-    emptyMessage.textContent = '할 일이 없어요. 위에서 추가해 보세요.';
-  } else {
-    emptyMessage.textContent = `'${currentFilter}' 할 일이 없어요.`;
+  // 보여줄 할 일이 없으면 목록 자리에 안내 문구를 고정으로 그림
+  if (visibleTodos.length === 0) {
+    const empty = document.createElement('li');
+    empty.className = 'empty-state';
+    empty.textContent = todos.length === 0
+      ? '할 일을 추가해보세요'
+      : `'${currentFilter}' 할 일이 없어요`;
+    list.appendChild(empty);
   }
-  emptyMessage.hidden = visibleTodos.length > 0;
 
   renderProgress();
   renderFilters();
