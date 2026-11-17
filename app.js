@@ -2,6 +2,7 @@
 // 구조: 데이터(todos 배열)가 바뀌면 → saveTodos()로 저장 → render()로 화면 전체를 다시 그림
 
 const STORAGE_KEY = 'todos';
+const CATEGORIES = ['업무', '개인', '공부'];
 
 // ===== 화면 요소 =====
 const form = document.getElementById('todo-form');
@@ -14,6 +15,7 @@ const todayText = document.getElementById('today');
 // ===== 데이터 =====
 // 할 일 하나: { id, text, category, done, createdAt }
 let todos = loadTodos();
+let editingId = null; // 지금 수정 중인 할 일의 id (없으면 null)
 
 // localStorage에서 목록을 불러옴 (없거나 깨져 있으면 빈 배열)
 function loadTodos() {
@@ -31,6 +33,11 @@ function saveTodos() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
 }
 
+// id로 할 일 하나를 찾음
+function findTodo(id) {
+  return todos.find((todo) => todo.id === id);
+}
+
 // 새 할 일을 만들어 목록에 넣고 저장
 function addTodo(text, category) {
   const todo = {
@@ -45,11 +52,61 @@ function addTodo(text, category) {
   render();
 }
 
+// 완료/미완료를 뒤집고 저장
+function toggleTodo(id) {
+  const todo = findTodo(id);
+  if (!todo) return;
+  todo.done = !todo.done;
+  saveTodos();
+  render();
+}
+
+// 글자와 카테고리를 바꾸고 저장
+function updateTodo(id, text, category) {
+  const todo = findTodo(id);
+  if (!todo) return;
+  todo.text = text;
+  todo.category = category;
+  editingId = null;
+  saveTodos();
+  render();
+}
+
+// 확인 창을 띄운 뒤 삭제하고 저장
+function deleteTodo(id) {
+  const todo = findTodo(id);
+  if (!todo) return;
+  if (!confirm(`"${todo.text}"을(를) 삭제할까요?`)) return;
+  todos = todos.filter((item) => item.id !== id);
+  saveTodos();
+  render();
+}
+
+// 수정 모드 시작 / 취소
+function startEdit(id) {
+  editingId = id;
+  render();
+}
+function cancelEdit() {
+  editingId = null;
+  render();
+}
+
 // ===== 화면 그리기 =====
 // 카테고리 이름 → CSS 클래스
 const CATEGORY_CLASS = { 업무: 'cat-work', 개인: 'cat-personal', 공부: 'cat-study' };
 
-// 할 일 하나를 <li> 요소로 만듦
+// 버튼 하나를 만드는 도우미
+function createButton(className, label, title) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = className;
+  button.textContent = label;
+  if (title) button.title = title;
+  return button;
+}
+
+// 할 일 하나를 <li> 요소로 만듦 (보기 모드)
 function createTodoElement(todo) {
   const li = document.createElement('li');
   li.className = `todo-item ${CATEGORY_CLASS[todo.category]}`;
@@ -69,27 +126,58 @@ function createTodoElement(todo) {
   tag.className = 'tag';
   tag.textContent = todo.category;
 
-  const editButton = document.createElement('button');
-  editButton.type = 'button';
-  editButton.className = 'btn-icon';
-  editButton.title = '수정';
-  editButton.textContent = '✎';
+  li.append(
+    check,
+    title,
+    tag,
+    createButton('btn-icon btn-edit', '✎', '수정'),
+    createButton('btn-icon btn-delete', '✕', '삭제'),
+  );
+  return li;
+}
 
-  const deleteButton = document.createElement('button');
-  deleteButton.type = 'button';
-  deleteButton.className = 'btn-icon btn-delete';
-  deleteButton.title = '삭제';
-  deleteButton.textContent = '✕';
+// 할 일 하나를 <li> 요소로 만듦 (수정 모드: 입력창 + 카테고리 선택 + 저장/취소)
+function createEditElement(todo) {
+  const li = document.createElement('li');
+  li.className = `todo-item is-editing ${CATEGORY_CLASS[todo.category]}`;
+  li.dataset.id = todo.id;
 
-  li.append(check, title, tag, editButton, deleteButton);
+  const textInput = document.createElement('input');
+  textInput.type = 'text';
+  textInput.className = 'edit-input';
+  textInput.value = todo.text;
+
+  const select = document.createElement('select');
+  select.className = 'edit-category';
+  CATEGORIES.forEach((name) => {
+    const option = document.createElement('option');
+    option.value = name;
+    option.textContent = name;
+    option.selected = name === todo.category;
+    select.appendChild(option);
+  });
+
+  li.append(
+    textInput,
+    select,
+    createButton('btn-small btn-save', '저장'),
+    createButton('btn-small btn-cancel', '취소'),
+  );
   return li;
 }
 
 // 목록 전체를 다시 그림
 function render() {
   list.innerHTML = '';
-  todos.forEach((todo) => list.appendChild(createTodoElement(todo)));
+  todos.forEach((todo) => {
+    const element = todo.id === editingId ? createEditElement(todo) : createTodoElement(todo);
+    list.appendChild(element);
+  });
   emptyMessage.hidden = todos.length > 0;
+
+  // 수정 중이면 입력창에 커서를 둠
+  const editInput = list.querySelector('.edit-input');
+  if (editInput) editInput.focus();
 }
 
 // 오늘 날짜 표시 (예: 2026년 11월 17일 화요일)
@@ -97,6 +185,17 @@ function showToday() {
   todayText.textContent = new Date().toLocaleDateString('ko-KR', {
     year: 'numeric', month: 'long', day: 'numeric', weekday: 'long',
   });
+}
+
+// 수정 중인 항목의 입력값을 읽어 저장 (빈 칸이면 저장 안 함)
+function submitEdit(li) {
+  const text = li.querySelector('.edit-input').value.trim();
+  const category = li.querySelector('.edit-category').value;
+  if (text === '') {
+    li.querySelector('.edit-input').focus();
+    return;
+  }
+  updateTodo(li.dataset.id, text, category);
 }
 
 // ===== 이벤트 =====
@@ -111,6 +210,27 @@ form.addEventListener('submit', (event) => {
   addTodo(text, categorySelect.value);
   input.value = '';
   input.focus();
+});
+
+// 목록 안의 클릭을 한 곳에서 처리 (이벤트 위임)
+list.addEventListener('click', (event) => {
+  const li = event.target.closest('.todo-item');
+  if (!li) return;
+  const id = li.dataset.id;
+
+  if (event.target.classList.contains('todo-check')) toggleTodo(id);
+  else if (event.target.classList.contains('btn-edit')) startEdit(id);
+  else if (event.target.classList.contains('btn-delete')) deleteTodo(id);
+  else if (event.target.classList.contains('btn-save')) submitEdit(li);
+  else if (event.target.classList.contains('btn-cancel')) cancelEdit();
+});
+
+// 수정 중 Enter → 저장, Esc → 취소
+list.addEventListener('keydown', (event) => {
+  const li = event.target.closest('.is-editing');
+  if (!li || event.isComposing) return; // 한글 조합 중에 누른 Enter는 무시 (두 번 실행 방지)
+  if (event.key === 'Enter') submitEdit(li);
+  else if (event.key === 'Escape') cancelEdit();
 });
 
 // ===== 시작 =====

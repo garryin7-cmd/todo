@@ -184,6 +184,35 @@ button { font: inherit; cursor: pointer; }
 }
 .todo-item.is-done { opacity: 0.7; }
 
+/* 수정 모드 */
+.todo-item.is-editing { flex-wrap: wrap; }
+.edit-input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--primary);
+  border-radius: 6px;
+  font: inherit;
+}
+.edit-category {
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  background: var(--card);
+}
+.btn-small {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+}
+.btn-save {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
 /* 할 일이 없을 때 */
 .empty {
   text-align: center;
