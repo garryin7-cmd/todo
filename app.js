@@ -18,8 +18,13 @@ const confettiCanvas = document.getElementById('confetti');
 const celebration = document.getElementById('celebration');
 const quoteText = document.getElementById('quote-text');
 const quoteAuthor = document.getElementById('quote-author');
+const quoteHanja = document.getElementById('quote-hanja');
+const quoteReading = document.getElementById('quote-reading');
+const celebrationMessage = document.getElementById('celebration-message');
+const celebrationQuote = document.getElementById('celebration-quote');
 
 // ===== 축하 카드에 띄울 명언 (출처가 비교적 확실한 것만) =====
+// 한자 명언은 { hanja: 한자, reading: 음, text: 뜻풀이, author: 출처 } 형태로 한자·음·뜻을 함께 보여줌
 const QUOTES = [
   { text: '적지만, 무르익은 것을.', author: '카를 프리드리히 가우스 (평생의 좌우명)' },
   { text: '수학은 과학의 여왕이고, 정수론은 수학의 여왕이다.', author: '카를 프리드리히 가우스' },
@@ -38,9 +43,28 @@ const QUOTES = [
   { text: '잃어버린 시간은 다시 찾을 수 없다.', author: '벤저민 프랭클린' },
   { text: '어려워서 감히 하지 못하는 것이 아니다. 감히 하지 않기 때문에 어려운 것이다.', author: '세네카' },
   { text: '앞을 가로막는 것이 곧 길이 된다.', author: '마르쿠스 아우렐리우스, 《명상록》' },
-  { text: '배우고 때때로 익히면 또한 기쁘지 아니한가.', author: '공자, 《논어》' },
-  { text: '아는 것을 안다고 하고, 모르는 것을 모른다고 하는 것이 진정 아는 것이다.', author: '공자, 《논어》' },
-  { text: '죽고자 하면 살고, 살고자 하면 죽는다.', author: '이순신, 《난중일기》' },
+
+  // 한자 명언 · 고사성어
+  { hanja: '學而時習之 不亦說乎', reading: '학이시습지 불역열호', text: '배우고 때때로 익히면 또한 기쁘지 아니한가.', author: '공자, 《논어》 학이편' },
+  { hanja: '知之爲知之 不知爲不知 是知也', reading: '지지위지지 부지위부지 시지야', text: '아는 것을 안다고 하고, 모르는 것을 모른다고 하는 것이 진정 아는 것이다.', author: '공자, 《논어》 위정편' },
+  { hanja: '必死則生 必生則死', reading: '필사즉생 필생즉사', text: '죽고자 하면 살고, 살고자 하면 죽는다.', author: '이순신, 《난중일기》' },
+  { hanja: '盡人事待天命', reading: '진인사대천명', text: '사람으로서 할 수 있는 일을 다 하고 나서 하늘의 뜻을 기다린다.', author: '고사성어' },
+  { hanja: '磨斧作針', reading: '마부작침', text: '도끼를 갈아 바늘을 만든다. 아무리 어려운 일도 끈기 있게 하면 이룰 수 있다.', author: '고사성어 (이백의 일화)' },
+  { hanja: '愚公移山', reading: '우공이산', text: '어리석은 노인이 산을 옮긴다. 한 가지 일을 꾸준히 하면 결국 이룬다.', author: '《열자》' },
+  { hanja: '水滴穿石', reading: '수적천석', text: '물방울이 떨어져 돌을 뚫는다. 작은 노력도 쌓이면 큰일을 해낸다.', author: '고사성어' },
+  { hanja: '日新又日新', reading: '일신우일신', text: '날마다 새로워지고, 또 날마다 새로워진다.', author: '《대학》' },
+  { hanja: '有志竟成', reading: '유지경성', text: '뜻이 있으면 마침내 이룬다.', author: '《후한서》' },
+  { hanja: '千里之行 始於足下', reading: '천리지행 시어족하', text: '천 리 길도 발밑 한 걸음에서 시작된다.', author: '노자, 《도덕경》' },
+  { hanja: '知之者不如好之者 好之者不如樂之者', reading: '지지자불여호지자 호지자불여낙지자', text: '아는 사람은 좋아하는 사람만 못하고, 좋아하는 사람은 즐기는 사람만 못하다.', author: '공자, 《논어》 옹야편' },
+
+  // 탈무드 (미쉬나 《아보트》, 출처가 분명한 것만)
+  { text: '내가 나를 위하지 않으면 누가 나를 위하겠는가? 내가 나만을 위한다면 나는 무엇인가? 지금이 아니면 언제인가?', author: '힐렐, 탈무드 《아보트》 1:14' },
+  { text: '말은 적게 하고, 행동은 많이 하라.', author: '샴마이, 탈무드 《아보트》 1:15' },
+  { text: '그 일을 끝마치는 것이 네 의무는 아니지만, 그만둘 자유도 너에게는 없다.', author: '랍비 타르폰, 탈무드 《아보트》 2:16' },
+  { text: '누가 지혜로운가? 모든 사람에게서 배우는 사람이다.', author: '벤 조마, 탈무드 《아보트》 4:1' },
+  { text: '누가 강한가? 자기 자신을 다스리는 사람이다.', author: '벤 조마, 탈무드 《아보트》 4:1' },
+  { text: '누가 부유한가? 자기 몫에 만족하는 사람이다.', author: '벤 조마, 탈무드 《아보트》 4:1' },
+  { text: '한 생명을 구하는 사람은 온 세상을 구하는 것이다.', author: '탈무드 《산헤드린》 4:5' },
 ];
 const todayText = document.getElementById('today');
 const filterBar = document.getElementById('filters');
@@ -179,11 +203,21 @@ function pickQuote() {
   return QUOTES[index];
 }
 
-// 축하 카드(명언 포함)를 띄우고 폭죽을 터뜨림 (카드 바깥 클릭이나 Esc로 닫힘)
-function celebrate() {
-  const quote = pickQuote();
-  quoteText.textContent = `“${quote.text}”`;
-  quoteAuthor.textContent = `— ${quote.author} —`;
+// 축하 카드를 띄우고 폭죽을 터뜨림 (카드 바깥 클릭이나 Esc로 닫힘)
+// message: 카드 문구 / withQuote: 명언을 같이 보여줄지 (할 일 100%일 때만)
+function celebrate(message = '축하드려요,\n오늘 할 일을 모두 완료했습니다', withQuote = true) {
+  celebrationMessage.textContent = message;
+  celebrationQuote.hidden = !withQuote;
+  if (withQuote) {
+    const quote = pickQuote();
+    // 한자 명언이면 한자 · 음 · 뜻풀이를 함께
+    quoteHanja.hidden = !quote.hanja;
+    quoteReading.hidden = !quote.hanja;
+    quoteHanja.textContent = quote.hanja || '';
+    quoteReading.textContent = quote.reading || '';
+    quoteText.textContent = quote.hanja ? quote.text : `“${quote.text}”`;
+    quoteAuthor.textContent = `— ${quote.author} —`;
+  }
 
   toast.classList.remove('is-visible'); // 보통 토스트와 겹치지 않게
   celebration.classList.add('is-visible');
@@ -696,6 +730,7 @@ document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;
   if (celebration.classList.contains('is-visible')) closeCelebration();
   if (deadlineAlert.classList.contains('is-visible')) closeDeadlineAlert();
+  document.getElementById('dose-alert').classList.remove('is-visible');
 });
 
 // ===== 마감 경고 카드 =====

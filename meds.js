@@ -9,6 +9,8 @@ const EVENING_START_HOUR = 16; // 16:00부터 '저녁'
 const MAX_LOG = 730;           // 기록은 최근 730개(아침+저녁 1년치)까지 보관
 const KEEP_SNAPSHOTS = 10;     // '취소'용 되돌릴 개수는 최근 10개 기록에만 남김 (용량 절약)
 const SLOT_LABEL = { morning: '아침', evening: '저녁' };
+const TARGET_HOUR = { morning: 10, evening: 22 }; // 복용 목표 시각 (고정)
+const ON_TIME_MS = 2 * 60 * 1000;                 // 목표 시각 ~ +1분 59초까지 '제시간'
 
 const medsView = document.getElementById('view-meds');
 
@@ -16,14 +18,17 @@ const medsView = document.getElementById('view-meds');
 // medData = {
 //   meds: [{ id, name, dose, sheetSize, sheetLeft, stock }],
 //     dose: 1회 복용 알 수 / sheetSize: 한 판 알 수 / sheetLeft: 지금 판에 남은 알 수 / stock: 전체 재고
-//   log:  [{ key, date, slot, status: 'taken'|'skipped', time, late, snapshot }]
-//     key: 'YYYY-MM-DD|morning' / snapshot: 복용 전 개수 (취소할 때 되돌리기용)
+//   log:  [{ key, date, slot, status: 'taken'|'skipped', time, recordedAt, late, manual, snapshot }]
+//     key: 'YYYY-MM-DD|morning' / time: 먹은 시각 / recordedAt: 체크 버튼을 누른 시각
+//     late: 지난 시간대를 나중에 체크 / manual: 먹은 시각을 직접 입력
+//     snapshot: 복용 전 개수 (취소할 때 되돌리기용)
 // }
 let medData = loadMeds();
 let medEditingId = null;    // 수정 중인 약 id ('new'면 새 약 추가 중)
 let medRestockingId = null; // 재고 추가 입력 중인 약 id
 let medSelectedKey = null;  // 복약 카드에서 직접 고른 시간대 창 (null이면 자동)
 let medRange = '7d';        // 기록 보기 기간 (7d / 1m / 3m / 6m / 1y)
+let medTimeForm = null;     // 시각 입력 칸이 열린 시간대 { key, mode: 'new' | 'edit' }
 
 function loadMeds() {
   try {
@@ -134,29 +139,134 @@ function daysOfStock(med) {
   return Math.floor(med.stock / (med.dose * 2));
 }
 
+// ===== 복용 시각 판정 =====
+// 그 시간대의 목표 시각 (아침 10:00, 저녁 22:00)
+function targetTime(s) {
+  const [y, m, d] = s.date.split('-').map(Number);
+  return new Date(y, m - 1, d, TARGET_HOUR[s.slot], 0, 0).getTime();
+}
+
+// 먹은 시각 → 제시간 / 늦음 / 이름 + 몇 분 차이
+function doseTiming(s, time) {
+  const diff = time - targetTime(s);
+  if (diff >= 0 && diff < ON_TIME_MS) return { kind: 'ontime', minutes: 0 };
+  if (diff < 0) return { kind: 'early', minutes: Math.ceil(-diff / 60000) };
+  return { kind: 'late', minutes: Math.floor(diff / 60000) };
+}
+
+// 분 → 'N시간 N분' / 'N분'
+function durationText(minutes) {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}분`;
+  return m === 0 ? `${h}시간` : `${h}시간 ${m}분`;
+}
+
+function timingLabel(s, time) {
+  const t = doseTiming(s, time);
+  if (t.kind === 'ontime') return '제시간';
+  return t.kind === 'late' ? `${durationText(t.minutes)} 늦음` : `${durationText(t.minutes)} 일찍`;
+}
+
+// 판정 결과 카드 띄우기 (아침·저녁 둘 다 제시간인 날은 폭죽)
+function showDoseResult(s, time) {
+  const t = doseTiming(s, time);
+  const name = `${dayName(s.date)} ${SLOT_LABEL[s.slot]}`;
+
+  if (t.kind === 'ontime') {
+    const other = { date: s.date, slot: s.slot === 'morning' ? 'evening' : 'morning' };
+    const otherRecord = findRecord(other);
+    const bothOnTime = otherRecord && otherRecord.status === 'taken'
+      && doseTiming(other, otherRecord.time).kind === 'ontime';
+    if (bothOnTime) {
+      celebrate(`축하드려요,\n${dayName(s.date)} 약을 모두 제시간에 드셨어요`, false);
+      return;
+    }
+    showDoseCard('ok', '🎉', `축하드려요, ${name} 약을 제시간에 드셨어요`, '');
+    return;
+  }
+  const next = SLOT_LABEL[s.slot];
+  if (t.kind === 'late') {
+    showDoseCard('late', '🕐', `${name} 약을 ${durationText(t.minutes)} 늦게 드셨어요`, `내일 ${next}에는 제때 드시길 바라요`);
+  } else {
+    showDoseCard('early', '⏰', `${name} 약을 ${durationText(t.minutes)} 일찍 드셨어요`, `${next} 약은 ${TARGET_HOUR[s.slot]}시에 드셔야 해요`);
+  }
+}
+
+function showDoseCard(kind, emoji, title, sub) {
+  toast.classList.remove('is-visible');
+  document.getElementById('dose-card').className = `dose-card dose-${kind}`;
+  document.getElementById('dose-emoji').textContent = emoji;
+  document.getElementById('dose-title').textContent = title;
+  const subEl = document.getElementById('dose-sub');
+  subEl.textContent = sub;
+  subEl.hidden = !sub;
+  document.getElementById('dose-alert').classList.add('is-visible');
+}
+
+// 입력한 'HH:MM'을 그 시간대의 실제 시각으로 (저녁 약의 새벽 시각은 다음 날)
+// 시간대 밖이거나 미래면 { error }
+function timeFromInput(s, value) {
+  const [hh, mm] = value.split(':').map(Number);
+  const [y, m, d] = s.date.split('-').map(Number);
+  if (s.slot === 'morning' && (hh < DAY_START_HOUR || hh >= EVENING_START_HOUR)) {
+    return { error: `아침 약은 ${DAY_START_HOUR}:00 ~ ${EVENING_START_HOUR - 1}:59 사이 시각만 넣을 수 있어요` };
+  }
+  if (s.slot === 'evening' && hh >= DAY_START_HOUR && hh < EVENING_START_HOUR) {
+    return { error: `저녁 약은 ${EVENING_START_HOUR}:00 ~ 다음 날 ${DAY_START_HOUR - 1}:59 사이 시각만 넣을 수 있어요` };
+  }
+  const nextDay = s.slot === 'evening' && hh < DAY_START_HOUR ? 1 : 0;
+  const time = new Date(y, m - 1, d + nextDay, hh, mm, 0).getTime();
+  if (time > Date.now()) return { error: '아직 오지 않은 시각이에요' };
+  return { time };
+}
+
+function hhmm(time) {
+  const d = new Date(time);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 // ===== 기록하기 =====
 // 복용함: 판/재고에서 빼고 기록 (late: 나중에 '먹었어요'로 기록한 것)
-function takeDose(s, late = false) {
+// time: 먹은 시각 (기본: 지금) / manual: 시각을 직접 입력했는지
+function takeDose(s, time = Date.now(), manual = false) {
   if (findRecord(s) || medData.meds.length === 0) return;
+  // 지난 시간대를 지금 시각으로 체크하면 실제 먹은 시각을 모르니 판정하지 않음
+  const late = !manual && slotKey(s) !== slotKey(slotOf());
   const snapshot = {};
   medData.meds.forEach((med) => {
     snapshot[med.id] = { sheetLeft: med.sheetLeft, stock: med.stock };
     med.sheetLeft = sheetAfterDose(med);
     med.stock = Math.max(0, med.stock - med.dose);
   });
-  addRecord({ ...s, key: slotKey(s), status: 'taken', time: Date.now(), late, snapshot });
-  showToast(`${slotName(s)} 약 복용 기록했어요`);
+  addRecord({ ...s, key: slotKey(s), status: 'taken', time, recordedAt: Date.now(), late, manual, snapshot });
+  if (late) showToast(`${slotName(s)} 약 복용 기록했어요 · 먹은 시각은 [시각 수정]으로 넣을 수 있어요`);
+  else showDoseResult(s, time);
+}
+
+// 이미 남긴 복용 기록의 시각 고치기
+function editDoseTime(s, time) {
+  const record = findRecord(s);
+  if (!record || record.status !== 'taken') return;
+  record.time = time;
+  record.manual = true;
+  record.late = false;
+  medData.log.sort((a, b) => a.time - b.time);
+  saveMeds();
+  renderMeds();
+  showDoseResult(s, time);
 }
 
 // 안 먹음: 개수는 그대로 두고 기록만
 function skipDose(s) {
   if (findRecord(s)) return;
-  addRecord({ ...s, key: slotKey(s), status: 'skipped', time: Date.now() });
+  addRecord({ ...s, key: slotKey(s), status: 'skipped', time: Date.now(), recordedAt: Date.now() });
   showToast(`${slotName(s)} 약은 안 먹은 것으로 기록했어요`);
 }
 
 function addRecord(record) {
   medSelectedKey = null;
+  medTimeForm = null;
   medData.log.push(record);
   medData.log.sort((a, b) => a.time - b.time);
   if (medData.log.length > MAX_LOG) medData.log = medData.log.slice(-MAX_LOG);
@@ -168,7 +278,8 @@ function addRecord(record) {
 
 // 가장 최근 기록만 취소 가능 (복용이었으면 개수도 기록 전으로 되돌림)
 function latestRecord() {
-  return medData.log.reduce((a, b) => (!a || b.time > a.time ? b : a), null);
+  const at = (r) => r.recordedAt || r.time;
+  return medData.log.reduce((a, b) => (!a || at(b) > at(a) ? b : a), null);
 }
 
 function undoLatest() {
@@ -280,9 +391,25 @@ function slotPanelHtml(s, isCurrent, previous) {
   const undo = record && record === latestRecord()
     ? '<button type="button" class="btn-small" data-action="undo">취소</button>' : '';
 
+  const formOpen = medTimeForm && medTimeForm.key === slotKey(s);
+
   if (record && record.status === 'taken') {
-    const note = record.late ? ' (나중에 기록)' : '';
-    return `<div class="slot-panel ok"><span>✅ ${timeText(record.time)} 복용${note}</span>${undo}</div>`;
+    // 나중에 체크한 기록은 실제 먹은 시각을 모르니 판정 대신 안내
+    const judge = record.late
+      ? '<span class="timing unknown">먹은 시각 모름</span>'
+      : `<span class="timing ${doseTiming(s, record.time).kind}">${timingLabel(s, record.time)}</span>`;
+    const note = record.manual ? ' <small>(직접 입력)</small>' : '';
+    const edit = formOpen
+      ? timeFormHtml(s, 'edit', hhmm(record.time))
+      : `<div class="row-actions">
+          <button type="button" class="btn-small" data-action="time-form" data-mode="edit" data-key="${slotKey(s)}">시각 수정</button>
+          ${undo}
+        </div>`;
+    return `
+      <div class="slot-panel ok">
+        <div class="taken-line">✅ ${timeText(record.time)} 복용${note} ${judge}</div>
+        ${edit}
+      </div>`;
   }
   if (record && record.status === 'skipped') {
     return `<div class="slot-panel skip"><span>❌ 안 먹음으로 기록</span>${undo}</div>`;
@@ -307,11 +434,27 @@ function slotPanelHtml(s, isCurrent, previous) {
     <div class="slot-panel ${cls}">
       <div>${icon}아직 기록 없음 — 약판을 세어 보세요</div>
       ${compareHtml()}
+      ${formOpen ? timeFormHtml(s, 'new', `${String(TARGET_HOUR[s.slot]).padStart(2, '0')}:00`) : `
       <div class="row-actions">
         <button type="button" class="btn-small btn-save" data-action="record-take" data-key="${slotKey(s)}">먹었어요</button>
         <button type="button" class="btn-small" data-action="record-skip" data-key="${slotKey(s)}">안 먹었어요</button>
       </div>
+      <button type="button" class="link-btn" data-action="time-form" data-mode="new" data-key="${slotKey(s)}">다른 시간에 먹었어요</button>`}
     </div>`;
+}
+
+// 먹은 시각 입력 칸 (새 기록 / 시각 수정)
+function timeFormHtml(s, mode, value) {
+  return `
+    <form class="time-form" data-key="${slotKey(s)}" data-mode="${mode}">
+      <label>${mode === 'new' ? '실제로 먹은 시각' : '먹은 시각 수정'}
+        <input type="time" name="time" value="${value}" required>
+      </label>
+      <div class="row-actions">
+        <button type="submit" class="btn-small btn-save">저장</button>
+        <button type="button" class="btn-small" data-action="time-cancel">취소</button>
+      </div>
+    </form>`;
 }
 
 // 핵심 카드: 지금 판에 있어야 할 알 수 + [직전 | 지금] 시간대 전환 + 선택한 창
@@ -511,7 +654,7 @@ function backupHtml() {
     </section>`;
 }
 
-// 백업 파일 만들기 → 공유 창(카톡/드라이브) → 안 되면 다운로드
+// 백업 파일 만들기 → 공유 창(카톡/드라이브) → 공유가 안 되거나 실패하면 다운로드
 async function saveBackup() {
   const data = {};
   BACKUP_KEYS.forEach((key) => { data[key] = localStorage.getItem(key); });
@@ -525,26 +668,37 @@ async function saveBackup() {
   ];
   const shareable = navigator.canShare && candidates.find((file) => navigator.canShare({ files: [file] }));
 
-  try {
-    if (shareable) {
+  if (shareable) {
+    try {
       await navigator.share({ files: [shareable], title: '하루결 백업' });
-    } else {
-      const url = URL.createObjectURL(candidates[0]);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = candidates[0].name;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    }
-    localStorage.setItem(LAST_BACKUP_KEY, String(Date.now()));
-    showToast('백업 파일을 저장했어요');
-    renderMeds();
-  } catch (error) {
-    if (error.name !== 'AbortError') { // 공유 창에서 그냥 닫은 경우는 조용히
-      console.error(error);
-      showToast('백업 저장에 실패했어요');
+      markBackedUp('백업 파일을 보냈어요');
+      return;
+    } catch (error) {
+      if (error.name === 'AbortError') return; // 공유 창을 그냥 닫음
+      console.warn('공유 실패, 다운로드로 저장합니다:', error); // 예: 컴퓨터 크롬이 파일 공유를 거부
     }
   }
+
+  try {
+    const url = URL.createObjectURL(candidates[0]);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = candidates[0].name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    markBackedUp('다운로드 폴더에 백업 파일을 저장했어요');
+  } catch (error) {
+    console.error(error);
+    showToast(`백업 저장에 실패했어요 (${error.name})`);
+  }
+}
+
+function markBackedUp(message) {
+  localStorage.setItem(LAST_BACKUP_KEY, String(Date.now()));
+  showToast(message);
+  renderMeds();
 }
 
 // 백업 파일 읽어서 덮어쓰기 (확인 후) → 새로고침해서 전체 반영
@@ -665,8 +819,10 @@ medsView.addEventListener('click', (event) => {
   else if (action === 'backup-load') document.getElementById('backup-file').click();
   else if (action === 'record-take') {
     // 지금 시간대가 아닌 창에서 누르면 '나중에 기록'으로 표시
-    takeDose(slotFromKey(key), key !== slotKey(slotOf()));
+    takeDose(slotFromKey(key));
   }
+  else if (action === 'time-form') { medTimeForm = { key, mode: button.dataset.mode }; renderMeds(); medsView.querySelector('.time-form input')?.focus(); }
+  else if (action === 'time-cancel') { medTimeForm = null; renderMeds(); }
   else if (action === 'record-skip') skipDose(slotFromKey(key));
   else if (action === 'undo') undoLatest();
   else if (action === 'add') { medEditingId = 'new'; renderMeds(); }
@@ -675,6 +831,11 @@ medsView.addEventListener('click', (event) => {
   else if (action === 'delete') deleteMed(id);
   else if (action === 'restock') { medRestockingId = id; renderMeds(); medsView.querySelector('.restock-form input')?.focus(); }
   else if (action === 'restock-cancel') { medRestockingId = null; renderMeds(); }
+});
+
+// 판정 카드 바깥 클릭 → 닫기
+document.getElementById('dose-alert').addEventListener('click', (event) => {
+  if (event.target.id === 'dose-alert') event.currentTarget.classList.remove('is-visible');
 });
 
 // 백업 파일을 고르면 불러오기
@@ -688,6 +849,14 @@ medsView.addEventListener('submit', (event) => {
   event.preventDefault();
   const form = event.target;
   if (form.classList.contains('med-form')) saveMedForm(form);
+  else if (form.classList.contains('time-form')) {
+    const s = slotFromKey(form.dataset.key);
+    const result = timeFromInput(s, form.elements.time.value);
+    if (result.error) { showToast(result.error); return; }
+    medTimeForm = null;
+    if (form.dataset.mode === 'new') takeDose(s, result.time, true);
+    else editDoseTime(s, result.time);
+  }
   else if (form.classList.contains('restock-form')) restock(form.dataset.id, Number(form.elements.amount.value));
 });
 

@@ -118,11 +118,23 @@
   <div class="celebration" id="celebration" role="status" aria-live="polite">
     <div class="celebration-card">
       <div class="celebration-emoji">🎉</div>
-      <p>축하드려요,<br>오늘 할 일을 모두 완료했습니다</p>
-      <blockquote class="celebration-quote">
+      <p id="celebration-message"></p>
+      <blockquote class="celebration-quote" id="celebration-quote">
+        <span class="quote-hanja" id="quote-hanja"></span>
+        <span class="quote-reading" id="quote-reading"></span>
         <span id="quote-text"></span>
         <cite id="quote-author"></cite>
       </blockquote>
+      <small class="celebration-hint">바깥을 누르거나 Esc를 눌러 닫기</small>
+    </div>
+  </div>
+
+  <!-- 복약 시각 판정 카드 (제시간 / 늦음 / 이름) -->
+  <div class="overlay dose-alert" id="dose-alert" role="alertdialog" aria-labelledby="dose-title">
+    <div class="dose-card" id="dose-card">
+      <div class="dose-emoji" id="dose-emoji"></div>
+      <h2 class="dose-title" id="dose-title"></h2>
+      <p class="dose-sub" id="dose-sub"></p>
       <small class="celebration-hint">바깥을 누르거나 Esc를 눌러 닫기</small>
     </div>
   </div>
