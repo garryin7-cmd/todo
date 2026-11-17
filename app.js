@@ -17,7 +17,8 @@ const totalBar = document.getElementById('progress-total-bar');
 const categoryProgressItems = document.querySelectorAll('.progress-categories li');
 
 // ===== 데이터 =====
-// 할 일 하나: { id, text, category, done, createdAt }
+// 할 일 하나: { id, text, category, done, createdAt, completedAt }
+// completedAt: 완료 체크한 시각 (미완료이거나 기록 없으면 null/없음)
 let todos = loadTodos();
 let editingId = null; // 지금 수정 중인 할 일의 id (없으면 null)
 let currentFilter = '전체'; // 화면에 보여줄 카테고리 (저장하지 않음, 표시용)
@@ -51,17 +52,19 @@ function addTodo(text, category) {
     category: category,
     done: false,
     createdAt: Date.now(),
+    completedAt: null,
   };
   todos.push(todo);
   saveTodos();
   render();
 }
 
-// 완료/미완료를 뒤집고 저장
+// 완료/미완료를 뒤집고 저장 (완료하면 그 시각을 기록, 풀면 지움)
 function toggleTodo(id) {
   const todo = findTodo(id);
   if (!todo) return;
   todo.done = !todo.done;
+  todo.completedAt = todo.done ? Date.now() : null;
   saveTodos();
   render();
 }
@@ -111,6 +114,20 @@ function createButton(className, label, title) {
   return button;
 }
 
+// 완료 시각을 글자로 바꿈
+// 오늘: "오후 9:45 완료" / 올해 다른 날: "11월 16일 오후 9:45 완료" / 다른 해: "2025년 11월 16일 ..."
+function formatCompletedTime(timestamp) {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const time = date.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' });
+
+  if (date.toDateString() === now.toDateString()) return `${time} 완료`;
+
+  const dayOptions = { month: 'long', day: 'numeric' };
+  if (date.getFullYear() !== now.getFullYear()) dayOptions.year = 'numeric';
+  return `${date.toLocaleDateString('ko-KR', dayOptions)} ${time} 완료`;
+}
+
 // 할 일 하나를 <li> 요소로 만듦 (보기 모드)
 function createTodoElement(todo) {
   const li = document.createElement('li');
@@ -127,13 +144,24 @@ function createTodoElement(todo) {
   title.className = 'todo-title';
   title.textContent = todo.text; // textContent를 써야 입력한 글자가 HTML로 해석되지 않음
 
+  // 글자 + (완료 시각) 을 세로로 묶는 칸
+  const body = document.createElement('div');
+  body.className = 'todo-body';
+  body.appendChild(title);
+  if (todo.done && todo.completedAt) {
+    const time = document.createElement('small');
+    time.className = 'todo-time';
+    time.textContent = formatCompletedTime(todo.completedAt);
+    body.appendChild(time);
+  }
+
   const tag = document.createElement('span');
   tag.className = 'tag';
   tag.textContent = todo.category;
 
   li.append(
     check,
-    title,
+    body,
     tag,
     createButton('btn-icon btn-edit', '✎', '수정'),
     createButton('btn-icon btn-delete', '✕', '삭제'),
@@ -266,6 +294,8 @@ filterBar.addEventListener('click', (event) => {
   if (!button) return;
   currentFilter = button.dataset.filter;
   editingId = null; // 필터를 바꾸면 수정 중이던 것은 취소
+  // 카테고리 필터를 고르면 입력창 카테고리도 같이 맞춤 ('전체'면 그대로 둠)
+  if (currentFilter !== '전체') categorySelect.value = currentFilter;
   render();
 });
 
