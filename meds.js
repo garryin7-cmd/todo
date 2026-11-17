@@ -215,8 +215,20 @@ function restock(id, amount) {
 }
 
 // ===== 화면 그리기 =====
+// 먹었다면/안 먹었다면 판에 있어야 할 개수 비교 (기록 없는 시간대용)
+function compareHtml() {
+  const ifTaken = medData.meds.map((m) => `${escapeHtml(m.name)} <b>${sheetAfterDose(m)}</b>`).join(' · ');
+  const ifNot = medData.meds.map((m) => `${escapeHtml(m.name)} <b>${m.sheetLeft}</b>`).join(' · ');
+  return `
+      <div class="compare">
+        <div>먹었다면 → ${ifTaken}</div>
+        <div>안 먹었다면 → ${ifNot}</div>
+      </div>`;
+}
+
 // 슬롯 하나의 상태 줄 (복용함 / 안 먹음 / 기록 없음)
-function slotRowHtml(s, isCurrent) {
+// isCurrent: 지금 시간대인지 / previous: 지금 시간대일 때 바로 앞 시간대
+function slotRowHtml(s, isCurrent, previous) {
   const record = findRecord(s);
   const latest = latestRecord();
   const undo = record && record === latest
@@ -230,19 +242,27 @@ function slotRowHtml(s, isCurrent) {
     return `<div class="slot-row skip"><span>⏭ <b>${slotName(s)}</b> 안 먹음으로 기록</span>${undo}</div>`;
   }
   if (isCurrent) {
-    return `<div class="slot-row wait"><span>⏳ <b>${slotName(s)}</b> 아직 기록 없음</span></div>`;
+    // 앞 시간대도 기록이 없으면 경우의 수가 섞이니, 앞 시간대부터 정리하도록 안내
+    if (!findRecord(previous)) {
+      return `
+        <div class="slot-row wait">
+          <div>⏳ <b>${slotName(s)}</b> 아직 기록 없음</div>
+          <div class="wait-note">위의 ${slotName(previous)} 기록부터 정리해 주세요</div>
+        </div>`;
+    }
+    // 아래 큰 체크 버튼이 '먹었어요' 역할
+    return `
+      <div class="slot-row wait">
+        <div>⏳ <b>${slotName(s)}</b> 아직 기록 없음 — 약판을 세어 보세요</div>
+        ${compareHtml()}
+      </div>`;
   }
 
   // 지난 슬롯인데 기록이 없음 → 먹었다면/안 먹었다면 개수를 둘 다 보여줌
-  const ifTaken = medData.meds.map((m) => `${escapeHtml(m.name)} <b>${sheetAfterDose(m)}</b>`).join(' · ');
-  const ifNot = medData.meds.map((m) => `${escapeHtml(m.name)} <b>${m.sheetLeft}</b>`).join(' · ');
   return `
     <div class="slot-row missing">
       <div>⚠️ <b>${slotName(s)}</b> 체크 기록 없음 — 약판을 세어 보세요</div>
-      <div class="compare">
-        <div>먹었다면 → ${ifTaken}</div>
-        <div>안 먹었다면 → ${ifNot}</div>
-      </div>
+      ${compareHtml()}
       <div class="row-actions">
         <button type="button" class="btn-small btn-save" data-action="late-take" data-key="${slotKey(s)}">먹었어요</button>
         <button type="button" class="btn-small" data-action="late-skip" data-key="${slotKey(s)}">안 먹었어요</button>
@@ -272,7 +292,7 @@ function checkCardHtml() {
       <div class="pill-counts">${counts}</div>
       <div class="slot-rows">
         ${slotRowHtml(previous, false)}
-        ${slotRowHtml(current, true)}
+        ${slotRowHtml(current, true, previous)}
       </div>
       ${button}
     </section>`;
