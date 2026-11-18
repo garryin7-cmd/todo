@@ -469,7 +469,10 @@ body.is-dragging-page .drag-handle { cursor: grabbing; }
 .row-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 .link-btn { border: none; background: none; color: var(--primary); text-decoration: underline; padding: 6px 0 0; font-size: 14px; text-align: left; }
 /* 복약 카드 안 점선 버튼 (다른 시간에 먹었어요, 기록부터 정리): 중요 일정 추가 버튼 모양을 손가락 크기로 키움 */
-.slot-panel .slot-dashed-btn { margin-top: 8px; padding: 10px 12px; font-size: 15px; background: var(--card); }
+.slot-panel .slot-dashed-btn { margin-top: 8px; padding: 8px 12px; font-size: 14px; background: var(--card); }
+/* 한 번 더 먹었어요: 판·재고가 줄고 저녁 약을 건너뛰게 되는 주의 버튼 → 빨간 점선 */
+.slot-panel .slot-dashed-btn.danger { border-color: #ffa8a8; color: #e03131; }
+.slot-panel .slot-dashed-btn.danger:hover { border-color: #e03131; }
 
 /* 최근 7일, 내 약 */
 .med-section {

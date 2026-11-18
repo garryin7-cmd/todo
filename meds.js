@@ -451,7 +451,7 @@ function slotPanelHtml(s, isCurrent, previous) {
       doubleLine = `<div class="double-line">⚠️ ${timeText(record.doubled.time)}에 한 번 더 복용 → ${dayName(s.date)} 저녁 약은 드시면 안 돼요 (의료진 안내)</div>`;
       doubleBtn = `<button type="button" class="link-btn" data-action="double-undo" data-key="${slotKey(s)}">두 번 복용 기록 취소</button>`;
     } else if (s.slot === 'morning') {
-      doubleBtn = `<button type="button" class="link-btn danger" data-action="double" data-key="${slotKey(s)}">한 번 더 먹었어요</button>`;
+      doubleBtn = `<button type="button" class="event-add slot-dashed-btn danger" data-action="double" data-key="${slotKey(s)}">⚠️ 한 번 더 먹었어요</button>`;
     }
     const edit = formOpen
       ? timeFormHtml(s, 'edit', hhmm(record.time))
