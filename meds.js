@@ -761,7 +761,6 @@ function backupHtml() {
         <button type="button" class="btn-small btn-save" data-action="backup-save">백업 파일 저장</button>
         <button type="button" class="btn-small" data-action="backup-load">백업 불러오기</button>
       </div>
-      <input type="file" id="backup-file" accept=".json,.txt,application/json,text/plain" hidden>
     </section>`;
 }
 
@@ -958,9 +957,11 @@ document.getElementById('dose-alert').addEventListener('click', (event) => {
 });
 
 // 백업 파일을 고르면 불러오기
-medsView.addEventListener('change', (event) => {
-  if (event.target.id !== 'backup-file' || !event.target.files[0]) return;
-  loadBackup(event.target.files[0]);
+// (파일 선택칸은 index.html에 고정 → 폰에서 선택 창 다녀온 뒤 renderMeds()가 다시 그려도 사라지지 않음)
+document.getElementById('backup-file').addEventListener('change', (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  loadBackup(file);
   event.target.value = '';
 });
 
