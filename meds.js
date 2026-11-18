@@ -492,7 +492,7 @@ function slotPanelHtml(s, isCurrent, previous) {
     return `
       <div class="slot-panel wait">
         <div>아직 기록 없음</div>
-        <button type="button" class="link-btn" data-action="select-slot" data-key="${slotKey(previous)}">
+        <button type="button" class="event-add slot-dashed-btn" data-action="select-slot" data-key="${slotKey(previous)}">
           ${slotName(previous)} 기록부터 정리해 주세요 →
         </button>
       </div>`;
@@ -522,7 +522,7 @@ function slotPanelHtml(s, isCurrent, previous) {
         <button type="button" class="btn-small btn-save" data-action="record-take" data-key="${slotKey(s)}">먹었어요</button>
         <button type="button" class="btn-small" data-action="record-skip" data-key="${slotKey(s)}">안 먹었어요</button>
       </div>
-      <button type="button" class="link-btn" data-action="time-form" data-mode="new" data-key="${slotKey(s)}">다른 시간에 먹었어요</button>`;
+      <button type="button" class="event-add slot-dashed-btn" data-action="time-form" data-mode="new" data-key="${slotKey(s)}">🕐 다른 시간에 먹었어요</button>`;
 
   return `
     <div class="slot-panel ${cls}">
