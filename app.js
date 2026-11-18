@@ -531,6 +531,8 @@ function submitEdit(li) {
 // ===== 여러 줄 입력칸 (할 일 입력, 수정) =====
 // 글자 길이에 맞춰 입력칸 높이를 늘리거나 줄임
 function autoResize(textarea) {
+  // 다른 탭을 보는 중이라 숨겨져 있으면 높이가 0으로 재져서 칸이 납작해짐 → 건너뛰고, 탭으로 돌아올 때 맞춤
+  if (textarea.offsetParent === null) return;
   textarea.style.height = 'auto';
   const border = textarea.offsetHeight - textarea.clientHeight; // 위아래 테두리 두께도 포함해야 글자가 안 잘림
   textarea.style.height = `${textarea.scrollHeight + border}px`;
@@ -558,6 +560,14 @@ input.addEventListener('keydown', (event) => {
   form.requestSubmit();
 });
 
+// 마감일 칸이 비어 있으면 "마감일 (선택)" 안내 글자를 보여줌
+const dueWrap = document.getElementById('todo-due-wrap');
+function updateDueHint() {
+  dueWrap.classList.toggle('is-empty', dueInput.value === '');
+}
+dueInput.addEventListener('input', updateDueHint);
+dueInput.addEventListener('change', updateDueHint);
+
 // 수정 입력칸도 같은 처리
 list.addEventListener('input', (event) => {
   if (!event.target.classList.contains('edit-input')) return;
@@ -584,6 +594,7 @@ form.addEventListener('submit', (event) => {
   addTodo(text, categorySelect.value, dueInput.value);
   input.value = '';
   dueInput.value = '';
+  updateDueHint();
   autoResize(input); // 비웠으니 다시 한 줄 높이로
   input.focus();
 });
@@ -890,6 +901,7 @@ function showTab(name) {
     tab.setAttribute('aria-selected', active);
   });
   try { localStorage.setItem(TAB_KEY, name); } catch (error) { /* 저장 실패해도 탭 전환은 됨 */ }
+  if (name === 'todo') autoResize(input); // 숨겨져 있던 동안 못 맞춘 입력칸 높이를 지금 맞춤
 }
 
 tabBar.addEventListener('click', (event) => {

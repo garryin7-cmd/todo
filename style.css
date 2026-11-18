@@ -58,6 +58,7 @@ button { font: inherit; cursor: pointer; }
   font: inherit;
   line-height: 1.45;
   resize: none;       /* 여러 줄 입력칸: 높이는 글자 길이에 맞춰 자동 */
+  min-height: calc(1.45em + 22px); /* 최소 한 줄 높이 (줄 높이 + 위아래 여백 20px + 테두리 2px): 어떤 경우에도 반쯤 잘리지 않게 */
   overflow: hidden;
   display: block;
   word-break: keep-all;
@@ -86,6 +87,25 @@ button { font: inherit; cursor: pointer; }
   background: var(--card);
   color: var(--text);
 }
+/* 마감일 칸 + 비어 있을 때 안내 글자 */
+.due-wrap { position: relative; display: flex; }
+.due-wrap .todo-due { width: 100%; }
+.due-hint {
+  display: none;
+  position: absolute;
+  left: 10px;
+  right: 28px; /* 오른쪽 화살표/달력 아이콘과 안 겹치게 */
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-sub);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none; /* 글자를 눌러도 날짜 칸이 눌리게 */
+}
+.due-wrap.is-empty .due-hint { display: block; }
+.due-wrap.is-empty .todo-due:not(:focus) { color: transparent; } /* 컴퓨터의 '연도-월-일' 글자와 겹치지 않게 */
+.due-wrap.is-empty:focus-within .due-hint { display: none; }
 .todo-input:focus, .todo-category:focus, .todo-due:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
 
 /* ===== 3. 진행률 영역 ===== */
@@ -868,7 +888,7 @@ input::-webkit-calendar-picker-indicator { width: 22px; height: 22px; padding: 2
   /* 입력창은 한 줄 전체, 카테고리와 추가 버튼은 그 아래 */
   .todo-form { flex-wrap: wrap; }
   .todo-input { flex-basis: 100%; }
-  .todo-due { flex: 1.4; min-width: 0; }
+  .due-wrap { flex: 1.4; min-width: 0; }
   .todo-category { flex: 1; }
 
   /* 휴대폰에서 입력할 때 화면이 확대되지 않게 16px */
