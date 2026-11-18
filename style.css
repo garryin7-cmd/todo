@@ -465,7 +465,8 @@ body.is-dragging-page .drag-handle { cursor: grabbing; }
 .slot-panel.skip { background: #f1f3f5; color: var(--text-sub); }
 .slot-panel.missing { background: #fff4e6; border: 1px solid #ffc078; }
 .slot-panel .compare { margin: 8px 0; padding-left: 4px; line-height: 1.8; }
-.slot-panel .row-actions .btn-small { flex: 1; padding: 10px; font-size: 15px; } /* 먹었어요/안 먹었어요 크게 */
+.slot-panel .row-actions .btn-small { flex: 1; padding: 10px; font-size: 15px; white-space: nowrap; } /* 먹었어요/안 먹었어요 크게, 글자는 한 줄로 */
+.slot-panel.ok .row-actions { flex-basis: 100%; } /* 복용 완료 칸: [시각 수정][취소]는 새 줄에 가로 전체 폭 (폰에서 눌려서 '시각/수정' 두 줄 되던 문제) */
 .row-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 .link-btn { border: none; background: none; color: var(--primary); text-decoration: underline; padding: 6px 0 0; font-size: 14px; text-align: left; }
 /* 복약 카드 안 점선 버튼 (다른 시간에 먹었어요, 기록부터 정리): 중요 일정 추가 버튼 모양을 손가락 크기로 키움 */
@@ -690,6 +691,9 @@ body.is-dragging-page .drag-handle { cursor: grabbing; }
 .water-form { display: flex; gap: 6px; margin-top: 10px; }
 .water-form input { flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid var(--primary); border-radius: 6px; font: inherit; }
 .water-links { display: flex; justify-content: flex-end; }
+/* 방금 것 취소: 직접 입력 아래 오른쪽, 글자만큼만 차지하는 작은 빨간 점선 버튼 */
+.water-links .water-undo-btn { width: auto; margin-top: 6px; padding: 6px 12px; border-color: #ffa8a8; color: #e03131; }
+.water-links .water-undo-btn:hover { border-color: #e03131; color: #e03131; }
 .water-custom-btn { margin-top: 8px; }
 
 /* 기록 입력칸 */
